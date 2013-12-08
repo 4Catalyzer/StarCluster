@@ -55,7 +55,8 @@ class ClusterManager(managers.Manager):
         return "<ClusterManager: %s>" % self.ec2.region.name
 
     def get_cluster(self, cluster_name, group=None, load_receipt=True,
-                    load_plugins=True, load_volumes=True, require_keys=True):
+                    load_plugins=True, load_volumes=True, require_keys=True,
+                    load_iam_profile=True):
         """
         Returns a Cluster object representing an active cluster
         """
@@ -79,7 +80,8 @@ class ClusterManager(managers.Manager):
 
             if load_receipt:
                 cl.load_receipt(load_plugins=load_plugins,
-                                load_volumes=load_volumes)
+                                load_volumes=load_volumes,
+                                load_iam_profile=load_iam_profile)
             try:
                 cl.keyname = cl.keyname or cl.master_node.key_name
                 key_location = self.cfg.get_key(cl.keyname).get('key_location')
@@ -94,14 +96,16 @@ class ClusterManager(managers.Manager):
         except exception.SecurityGroupDoesNotExist:
             raise exception.ClusterDoesNotExist(cluster_name)
 
-    def get_clusters(self, load_receipt=True, load_plugins=True):
+    def get_clusters(self, load_receipt=True, load_plugins=True,
+                     load_iam_profile=True):
         """
         Returns a list of all active clusters
         """
         cluster_groups = self.get_cluster_security_groups()
         clusters = [self.get_cluster(g.name, group=g,
                                      load_receipt=load_receipt,
-                                     load_plugins=load_plugins)
+                                     load_plugins=load_plugins,
+                                     load_iam_profile=load_iam_profile)
                     for g in cluster_groups]
         return clusters
 
@@ -185,19 +189,22 @@ class ClusterManager(managers.Manager):
     def add_node(self, cluster_name, alias=None, no_create=False,
                  image_id=None, instance_type=None, zone=None,
                  placement_group=None, spot_bid=None, reboot_interval=10,
-                 n_reboot_restart=False):
+                 n_reboot_restart=False, iam_profile=None):
         cl = self.get_cluster(cluster_name)
         return cl.add_node(alias=alias, image_id=image_id,
                            instance_type=instance_type, zone=zone,
                            placement_group=placement_group, spot_bid=spot_bid,
                            no_create=no_create,
                            reboot_interval=reboot_interval,
-                           n_reboot_restart=n_reboot_restart)
+                           n_reboot_restart=n_reboot_restart,
+                           iam_profile=iam_profile
+                           )
 
     def add_nodes(self, cluster_name, num_nodes, aliases=None, no_create=False,
                   image_id=None, instance_type=None, zone=None,
                   placement_group=None, spot_bid=None, reboot_interval=10,
-                  n_reboot_restart=False, force_flat=False, plugins=None):
+                  n_reboot_restart=False, force_flat=False, plugins=None,
+                  iam_profile=None):
         """
         Add one or more nodes to cluster
         """
@@ -210,7 +217,8 @@ class ClusterManager(managers.Manager):
                             no_create=no_create,
                             reboot_interval=reboot_interval,
                             n_reboot_restart=n_reboot_restart,
-                            force_flat=force_flat)
+                            force_flat=force_flat,
+                            iam_profile=iam_profile)
 
     def remove_node(self, cluster_name, alias=None, terminate=True,
                     force=False):
@@ -314,7 +322,8 @@ class ClusterManager(managers.Manager):
             tag = self.get_tag_from_sg(scg.name)
             try:
                 cl = self.get_cluster(tag, group=scg, load_plugins=False,
-                                      load_volumes=False, require_keys=False)
+                                      load_volumes=False, require_keys=False,
+                                      load_iam_profile=True)
             except exception.IncompatibleCluster as e:
                 sep = '*' * 60
                 log.error('\n'.join([sep, e.msg, sep]),
@@ -343,6 +352,8 @@ class ClusterManager(managers.Manager):
                 print 'Subnet: %s' % getattr(n, 'subnet_id', 'N/A')
             print 'Zone: %s' % getattr(n, 'placement', 'N/A')
             print 'Keypair: %s' % getattr(n, 'key_name', 'N/A')
+            ipn = cl.iam_profile if cl.iam_profile else 'N/A'
+            print 'IAM instance profile: %s' % ipn
             ebs_vols = []
             for node in nodes:
                 devices = node.attached_vols
@@ -435,12 +446,14 @@ class Cluster(object):
                  force_spot_master=False,
                  disable_cloudinit=False,
                  subnet_ids=[],
+                 iam_profile=None,
                  public_ips=None,
                  plugins_order=[],
                  config_on_master=False,
                  dns_suffix=None,
                  node_instance_array=[],
                  impaired_threshold_sec=120):
+
         # update class vars with given vars
         _vars = locals().copy()
         for k in ['cluster_group', 'ec2_conn', 'node_image_id',
@@ -661,7 +674,8 @@ class Cluster(object):
         print "User settings"
         print json.dumps(user_settings, indent=1, sort_keys=True)
 
-    def load_receipt(self, load_plugins=True, load_volumes=True):
+    def load_receipt(self, load_plugins=True, load_volumes=True,
+                     load_iam_profile=True):
         """
         Load the original settings used to launch this cluster into this
         Cluster object. Settings are loaded from cluster group tags and the
@@ -696,6 +710,9 @@ class Cluster(object):
                     master.get_plugins(self.plugins_order))
             if load_volumes:
                 self.volumes = master.get_volumes()
+            if load_iam_profile:
+                self.iam_profile = master.get_iam_profile()
+
         except exception.PluginError:
             log.error("An error occurred while loading plugins: ",
                       exc_info=True)
@@ -1072,11 +1089,13 @@ class Cluster(object):
         return _spots
 
     def create_node(self, alias, image_id=None, instance_type=None, zone=None,
-                    placement_group=None, spot_bid=None, force_flat=False):
+                    placement_group=None, spot_bid=None, force_flat=False,
+                    iam_profile=None):
         return self.create_nodes([alias], image_id=image_id,
                                  instance_type=instance_type, zone=zone,
                                  placement_group=placement_group,
-                                 spot_bid=spot_bid, force_flat=force_flat)[0]
+                                 spot_bid=spot_bid, force_flat=force_flat,
+                                 iam_profile=iam_profile)[0]
 
     def _get_cluster_userdata(self, aliases):
         alias_file = utils.string_to_file('\n'.join(['#ignored'] + aliases),
@@ -1124,7 +1143,7 @@ class Cluster(object):
 
     def create_nodes(self, aliases, image_id=None, instance_type=None,
                      zone=None, placement_group=None, spot_bid=None,
-                     force_flat=False):
+                     force_flat=False, iam_profile=None):
         """
         Convenience method for requesting instances with this cluster's
         settings. All settings (kwargs) except force_flat default to cluster
@@ -1185,6 +1204,7 @@ class Cluster(object):
         image_id = image_id or self.node_image_id
         count = len(aliases) if not spot_bid else 1
         user_data = self._get_cluster_userdata(aliases)
+        iam_profile = iam_profile or self.iam_profile
         kwargs = dict(price=spot_bid, instance_type=instance_type,
                       min_count=count, max_count=count, count=count,
                       key_name=self.keyname,
@@ -1192,7 +1212,9 @@ class Cluster(object):
                       launch_group=launch_group,
                       placement=zone,
                       user_data=user_data,
-                      placement_group=placement_group)
+                      placement_group=placement_group,
+                      iam_profile=iam_profile
+                      )
         if self.subnet_ids:
             subnet_id = self.subnet_ids[0]  # default subnet
             if zone:
@@ -1250,7 +1272,8 @@ class Cluster(object):
 
     def add_node(self, alias=None, no_create=False, image_id=None,
                  instance_type=None, zone=None, placement_group=None,
-                 spot_bid=None, reboot_interval=10, n_reboot_restart=False):
+                 spot_bid=None, reboot_interval=10, n_reboot_restart=False,
+                 iam_profile=None):
 
         """
         Add a single node to this cluster
@@ -1266,7 +1289,7 @@ class Cluster(object):
     def add_nodes(self, num_nodes, aliases=None, image_id=None,
                   instance_type=None, zone=None, placement_group=None,
                   spot_bid=None, no_create=False, reboot_interval=10,
-                  n_reboot_restart=False, force_flat=False):
+                  n_reboot_restart=False, force_flat=False, iam_profile=None):
         """
         Add new nodes to this cluster
 

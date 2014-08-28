@@ -288,12 +288,13 @@ class IPCluster(DefaultClusterSetup):
         cfile, n_engines_master = self._start_cluster(master, profile_dir)
         # Start engines on each of the non-master nodes
         non_master_nodes = [node for node in nodes if not node.is_master()]
+        n_engines_non_master = 0
         for node in non_master_nodes:
             self.pool.simple_job(
                 _start_engines, (node, user, node.num_processors),
                 jobid=node.alias)
-        n_engines_non_master = sum(node.num_processors
-                                   for node in non_master_nodes)
+            n_engines_non_master += node.num_processors
+
         if len(non_master_nodes) > 0:
             log.info("Adding %d engines on %d nodes",
                      n_engines_non_master, len(non_master_nodes))
@@ -312,7 +313,7 @@ class IPCluster(DefaultClusterSetup):
         self._check_ipython_installed(node)
         n_engines = node.num_processors
         log.info("Adding %d engines on %s", n_engines, node.alias)
-        _start_engines(node, user)
+        _start_engines(node, user, n_engines=n_engines)
 
     def on_remove_node(self, node, nodes, master, user, user_shell, volumes):
         raise NotImplementedError("on_remove_node method not implemented")

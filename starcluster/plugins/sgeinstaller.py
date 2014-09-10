@@ -45,3 +45,8 @@ class SGEInstaller(clustersetup.DefaultClusterSetup):
         master.ssh.execute('mv /tmp/sge "%s"' % self.dest)
         master.ssh.execute('chmod -R  a+r "%s"' % self.dest)
 
+    def on_add_node(self, node, nodes, master, user, user_shell, volumes):
+        raise NotImplementedError("on_add_node method not implemented")
+
+    def on_remove_node(self, node, nodes, master, user, user_shell, volumes):
+        raise NotImplementedError("on_remove_node method not implemented")

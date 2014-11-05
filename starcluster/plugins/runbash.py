@@ -25,9 +25,13 @@ from starcluster.utils import print_timing
 class BashRunner(DefaultClusterSetup):
     """Bash Runner"""
 
-    def __init__(self, bash_file=None):
+    def __init__(self, bash_file=None, forward_ssh_agent=False):
         super(BashRunner, self).__init__()
         self.bash_file = bash_file
+        if isinstance(forward_ssh_agent, basestring):
+            self.forward_ssh_agent = forward_ssh_agent.lower().strip() == 'true'
+        else:
+            self.forward_ssh_agent = forward_ssh_agent
 
     @print_timing("BashRunner")
     def setup_swap(self, nodes):
@@ -35,7 +39,10 @@ class BashRunner(DefaultClusterSetup):
             log.info("No bash file specified!")
             return
 
-        log.info("Running bash file: %s" % self.bash_file)
+        msg = "Running bash file: %s" % self.bash_file
+        if self.forward_ssh_agent:
+            msg += " with forward_ssh_agent"
+        log.info(msg)
         with open(self.bash_file, 'r') as fp:
             commands = fp.readlines()
 
@@ -43,7 +50,10 @@ class BashRunner(DefaultClusterSetup):
             log.info("$ " + command)
         cmd = "\n".join(commands)
         for node in nodes:
-            self.pool.simple_job(node.ssh.execute, (cmd,), jobid=node.alias)
+            self.pool.simple_job(node.ssh.execute,
+                args=(cmd,),
+                kwargs={'forward_ssh_agent': self.forward_ssh_agent},
+                jobid=node.alias)
         self.pool.wait(len(nodes))
 
     def run(self, nodes, master, user, user_shell, volumes):

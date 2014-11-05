@@ -97,6 +97,9 @@ class CmdAddNode(ClusterCompleter):
             "-x", "--no-create", dest="no_create", action="store_true",
             default=False, help="do not launch new EC2 instances when "
             "adding nodes (use existing instances instead)")
+        parser.add_option(
+            "--force-flat", dest="force_flat", action="store_true",
+            default=False, help="Use on-demand price")
         parser.add_option("-U", "--userdata-script", dest="userdata_scripts",
                           action="append", default=None, metavar="FILE",
                           help="Path to userdata script that will run on "
@@ -130,4 +133,5 @@ class CmdAddNode(ClusterCompleter):
                           instance_type=self.opts.instance_type,
                           zone=self.opts.zone, spot_bid=self.opts.spot_bid,
                           no_create=self.opts.no_create,
-                          userdata_scripts=self.opts.userdata_scripts)
+                          userdata_scripts=self.opts.userdata_scripts,
+                          force_flat=self.opts.force_flat)

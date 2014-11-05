@@ -178,7 +178,8 @@ class ClusterManager(managers.Manager):
 
     def add_nodes(self, cluster_name, num_nodes, aliases=None, no_create=False,
                   image_id=None, instance_type=None, zone=None,
-                  placement_group=None, spot_bid=None, userdata_scripts=None):
+                  placement_group=None, spot_bid=None, userdata_scripts=None,
+                  force_flat=False):
         """
         Add one or more nodes to cluster
         """
@@ -188,7 +189,7 @@ class ClusterManager(managers.Manager):
         return cl.add_nodes(num_nodes, aliases=aliases, image_id=image_id,
                             instance_type=instance_type, zone=zone,
                             placement_group=placement_group, spot_bid=spot_bid,
-                            no_create=no_create)
+                            no_create=no_create, force_flat=force_flat)
 
     def remove_node(self, cluster_name, alias=None, terminate=True,
                     force=False):
@@ -1004,7 +1005,7 @@ class Cluster(object):
 
     def add_nodes(self, num_nodes, aliases=None, image_id=None,
                   instance_type=None, zone=None, placement_group=None,
-                  spot_bid=None, no_create=False):
+                  spot_bid=None, no_create=False, force_flat=False):
         """
         Add new nodes to this cluster
 
@@ -1037,8 +1038,8 @@ class Cluster(object):
             resp = self.create_nodes(aliases, image_id=image_id,
                                      instance_type=instance_type, zone=zone,
                                      placement_group=placement_group,
-                                     spot_bid=spot_bid)
-            if spot_bid or self.spot_bid:
+                                     spot_bid=spot_bid, force_flat=force_flat)
+            if not force_flat and (spot_bid or self.spot_bid):
                 self.ec2.wait_for_propagation(spot_requests=resp)
             else:
                 self.ec2.wait_for_propagation(instances=resp[0].instances)

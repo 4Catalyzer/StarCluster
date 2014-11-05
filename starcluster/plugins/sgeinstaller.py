@@ -28,18 +28,24 @@ class SGEInstaller(clustersetup.DefaultClusterSetup):
     setup_class = starcluster.plugins.sgeinstaller.SGEInstaller
     path = http://
     """
-    def __init__(self, path=None):
+    def __init__(self, path=None, skip_if_installed=True):
         super(SGEInstaller, self).__init__()
         self.path = path
         self.dest = '/opt/sge6-fresh'
+        if isinstance(skip_if_installed, basestring):
+            self.skip_if_installed = skip_if_installed.lower().strip() == 'true'
+        else:
+            self.skip_if_installed = skip_if_installed
 
     def run(self, nodes, master, user, user_shell, volumes):
         if not self.path:
             log.info("No path specified!")
             return
+        elif self.skip_if_installed and master.ssh.isdir(self.dest):
+            log.info("SGE is already installed on this AMI, skipping...")
+            return
         log.info('Installing SGE to master')
 
- #       master.ssh.execute('wget "%s" -O /tmp/sge.zip' % self.path)
         master.ssh.execute('curl "%s" -o /tmp/sge.zip' % self.path)
         master.ssh.execute('unzip -o -q /tmp/sge.zip -d /tmp/sge -x /')
         master.ssh.execute('mv /tmp/sge "%s"' % self.dest)

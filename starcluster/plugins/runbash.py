@@ -25,7 +25,7 @@ from starcluster.utils import print_timing
 class BashRunner(DefaultClusterSetup):
     """Bash Runner"""
 
-    def __init__(self, bash_file=None, forward_ssh_agent=False):
+    def __init__(self, bash_file=None, forward_ssh_agent=False, master_only=False):
         super(BashRunner, self).__init__()
         self.bash_file = bash_file
         if isinstance(forward_ssh_agent, basestring):
@@ -33,8 +33,13 @@ class BashRunner(DefaultClusterSetup):
         else:
             self.forward_ssh_agent = forward_ssh_agent
 
+        if isinstance(master_only, basestring):
+            self.master_only = master_only.lower().strip() == 'true'
+        else:
+            self.master_only = master_only
+
     @print_timing("BashRunner")
-    def setup_swap(self, nodes):
+    def run_bash(self, nodes):
         if not self.bash_file:
             log.info("No bash file specified!")
             return
@@ -57,10 +62,14 @@ class BashRunner(DefaultClusterSetup):
         self.pool.wait(len(nodes))
 
     def run(self, nodes, master, user, user_shell, volumes):
-        self.setup_swap(nodes)
+        if self.master_only:
+            self.run_bash([master])
+        else:
+            self.run_bash(nodes)
 
     def on_add_node(self, node, nodes, master, user, user_shell, volumes):
-        self.setup_swap([node])
+        if not self.master_only:
+            self.run_bash([node])
 
     def on_remove_node(self, node, nodes, master, user, user_shell, volumes):
         raise NotImplementedError("on_remove_node method not implemented")

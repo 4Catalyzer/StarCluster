@@ -179,13 +179,15 @@ class ClusterManager(managers.Manager):
     def add_nodes(self, cluster_name, num_nodes, aliases=None, no_create=False,
                   image_id=None, instance_type=None, zone=None,
                   placement_group=None, spot_bid=None, userdata_scripts=None,
-                  force_flat=False):
+                  force_flat=False, plugins=None):
         """
         Add one or more nodes to cluster
         """
         cl = self.get_cluster(cluster_name)
         if userdata_scripts:
             cl.userdata_scripts = userdata_scripts
+        if plugins is not None:
+            cl.plugins = plugins
         return cl.add_nodes(num_nodes, aliases=aliases, image_id=image_id,
                             instance_type=instance_type, zone=zone,
                             placement_group=placement_group, spot_bid=spot_bid,

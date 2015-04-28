@@ -17,6 +17,8 @@
 
 """
 """
+import os
+
 from starcluster.clustersetup import DefaultClusterSetup
 from starcluster.logger import log
 from starcluster.utils import print_timing
@@ -44,11 +46,12 @@ class BashRunner(DefaultClusterSetup):
             log.info("No bash file specified!")
             return
 
-        msg = "Running bash file: %s" % self.bash_file
+        bash_file = os.path.expanduser(self.bash_file)
+        msg = "Running bash file: %s" % bash_file
         if self.forward_ssh_agent:
             msg += " with forward_ssh_agent"
         log.info(msg)
-        with open(self.bash_file, 'r') as fp:
+        with open(bash_file, 'r') as fp:
             commands = fp.readlines()
 
         for command in commands:

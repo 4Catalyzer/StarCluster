@@ -76,7 +76,17 @@ def _start_engines(node, user, n_engines=None, kill_existing=False):
     node.ssh.switch_user('root')
 
 
-class IPCluster(DefaultClusterSetup):
+class IPClusterBase(DefaultClusterSetup):
+    def __init__(self, master_is_exec_host=True, slots_per_host=None,
+                 **kwargs):
+        super(IPClusterBase, self).__init__(**kwargs)
+        self.master_is_exec_host = str(master_is_exec_host).lower() == "true"
+        self.slots_per_host = None
+        if slots_per_host is not None:
+            self.slots_per_host = int(slots_per_host)
+
+
+class IPCluster(IPClusterBase):
     """Start an IPython (>= 0.13) cluster
 
     Example config:
@@ -91,8 +101,9 @@ class IPCluster(DefaultClusterSetup):
 
     """
     def __init__(self, enable_notebook=False, notebook_passwd=None,
-                 notebook_directory=None, packer=None, log_level='INFO'):
-        super(IPCluster, self).__init__()
+                 notebook_directory=None, packer=None, log_level='INFO',
+                 **kwargs):
+        super(IPCluster, self).__init__(**kwargs)
         if isinstance(enable_notebook, basestring):
             self.enable_notebook = enable_notebook.lower().strip() == 'true'
         else:
@@ -357,7 +368,7 @@ class IPClusterStop(DefaultClusterSetup):
         raise NotImplementedError("on_remove_node method not implemented")
 
 
-class IPClusterRestartEngines(DefaultClusterSetup):
+class IPClusterRestartEngines(IPClusterBase):
     """Plugin to kill and restart all engines of an IPython cluster
 
     This plugin can be useful to hard-reset the all the engines, for instance
@@ -371,15 +382,19 @@ class IPClusterRestartEngines(DefaultClusterSetup):
     """
     def run(self, nodes, master, user, user_shell, volumes):
         n_total = 0
+        node_count = 0
         for node in nodes:
-            n_engines = node.num_processors
+            if node.is_master() and not self.master_is_exec_host:
+                continue
+            node_count += 1
+            n_engines = self.slots_per_host or node.num_processors
             if node.is_master() and n_engines > 2:
                 n_engines -= 1
             self.pool.simple_job(
                 _start_engines, (node, user, n_engines, True),
                 jobid=node.alias)
             n_total += n_engines
-        log.info("Restarting %d engines on %d nodes", n_total, len(nodes))
+        log.info("Restarting %d engines on %d nodes", n_total, node_count)
         self.pool.wait(len(nodes))
 
     def on_add_node(self, node, nodes, master, user, user_shell, volumes):

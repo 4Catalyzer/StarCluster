@@ -175,7 +175,9 @@ class IPCluster(IPClusterBase):
         f.close()
 
     def _start_cluster(self, master, profile_dir):
-        n_engines = max(1, master.num_processors - 1)
+        n_engines = max(1, (self.slots_per_host or master.num_processors) - 1)
+        if not self.master_is_exec_host:
+            n_engines = 0
         log.info("Starting the IPython controller and %i engines on master"
                  % n_engines)
         # cleanup existing connection files, to prevent their use
@@ -303,10 +305,11 @@ class IPCluster(IPClusterBase):
         non_master_nodes = [node for node in nodes if not node.is_master()]
         n_engines_non_master = 0
         for node in non_master_nodes:
+            n_engines = self.slots_per_host or node.num_processors
             self.pool.simple_job(
-                _start_engines, (node, user, node.num_processors),
+                _start_engines, (node, user, n_engines),
                 jobid=node.alias)
-            n_engines_non_master += node.num_processors
+            n_engines_non_master += n_engines
 
         if len(non_master_nodes) > 0:
             log.info("Adding %d engines on %d nodes",
@@ -324,7 +327,7 @@ class IPCluster(IPClusterBase):
 
     def on_add_node(self, node, nodes, master, user, user_shell, volumes):
         self._check_ipython_installed(node)
-        n_engines = node.num_processors
+        n_engines = self.slots_per_host or node.num_processors
         log.info("Adding %d engines on %s", n_engines, node.alias)
         _start_engines(node, user, n_engines=n_engines)
 

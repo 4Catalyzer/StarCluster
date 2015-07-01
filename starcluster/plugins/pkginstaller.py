@@ -47,6 +47,7 @@ class PackageInstaller(clustersetup.DefaultClusterSetup):
 
     def on_add_node(self, new_node, nodes, master, user, user_shell, volumes):
         log.info('Installing the following packages on %s:' % new_node.alias)
+        log.info(', '.join(self.packages), extra=dict(__raw__=True))
         pkgs = ' '.join(self.packages)
         new_node.apt_install(pkgs)
 

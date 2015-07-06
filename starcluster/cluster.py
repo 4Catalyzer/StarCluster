@@ -1221,11 +1221,12 @@ class Cluster(object):
         log.info("Launching master node (ami: %s, type: %s)..." %
                  (mimage, mtype))
         force_flat = not self.force_spot_master
-        master_response = self.create_node(master_alias,
-                                           image_id=mimage,
-                                           instance_type=mtype,
-                                           force_flat=force_flat,
-                                           spot_bid=self.spot_bid_master or self.spot_bid)
+        master_response = self.create_node(
+            master_alias,
+            image_id=mimage,
+            instance_type=mtype,
+            force_flat=force_flat,
+            spot_bid=self.spot_bid_master or self.spot_bid)
         insts, spot_reqs = [], []
         zone = None
         if not force_flat and self.spot_bid:

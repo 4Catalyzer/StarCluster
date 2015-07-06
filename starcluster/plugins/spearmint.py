@@ -18,15 +18,7 @@
 """
 A starcluster plugin for running Spearmint
 """
-import json
-import os
-import time
-import posixpath
 
-from starcluster import utils
-from starcluster import static
-from starcluster import spinner
-from starcluster import exception
 from starcluster.utils import print_timing
 from starcluster.clustersetup import DefaultClusterSetup
 
@@ -39,7 +31,8 @@ class SMCluster(DefaultClusterSetup):
     def __init__(self, ports=[]):
         super(SMCluster, self).__init__()
         if isinstance(ports, basestring):
-            self.ports = [int(port.strip()) for port in ports.strip().split(",")]
+            self.ports = [int(port.strip())
+                          for port in ports.strip().split(",")]
         else:
             self.ports = ports
 
@@ -69,5 +62,3 @@ class SMCluster(DefaultClusterSetup):
 
     def on_remove_node(self, node, nodes, master, user, user_shell, volumes):
         pass
-
-

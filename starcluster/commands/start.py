@@ -117,8 +117,8 @@ class CmdStart(ClusterCompleter):
                           help="requests spot instances instead of flat "
                           "rate instances. Uses SPOT_BID as max bid for "
                           "the request.")
-        parser.add_option("--bid-master", dest="spot_bid_master", action="store",
-                          type="float", default=None,
+        parser.add_option("--bid-master", dest="spot_bid_master",
+                          action="store", type="float", default=None,
                           help="requests spot instances instead of flat "
                           "rate instances. Uses SPOT_BID as max bid for "
                           "the request only for master.")
@@ -237,12 +237,14 @@ class CmdStart(ClusterCompleter):
             scluster = self.cm.get_cluster_template(template, tag)
 
         if self.opts.volumes is not None:
-            volumes_orig = [x for x in (y.strip() for y in self.opts.volumes) if x]
+            volumes_orig = [x for x in
+                            (y.strip() for y in self.opts.volumes)
+                            if x]
             self.opts.volumes = AttributeDict()
             for key in volumes_orig:
-               self.opts.volumes[key] = vol = self.cfg.vols.get(key).copy()
-               del vol['__name__']
-               self.opts.volumes = scluster.load_volumes(self.opts.volumes)
+                self.opts.volumes[key] = vol = self.cfg.vols.get(key).copy()
+                del vol['__name__']
+                self.opts.volumes = scluster.load_volumes(self.opts.volumes)
 
         scluster.update(self.specified_options_dict)
         if self.opts.keyname and not self.opts.key_location:

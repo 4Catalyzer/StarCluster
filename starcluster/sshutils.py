@@ -487,7 +487,8 @@ class SSHClient(object):
     def get_last_status(self):
         return self.__last_status
 
-    def get_status(self, command, source_profile=True, forward_ssh_agent=False):
+    def get_status(self, command, source_profile=True,
+                   forward_ssh_agent=False):
         """
         Execute a remote command and return the exit status
         """

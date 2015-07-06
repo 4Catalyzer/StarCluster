@@ -142,7 +142,8 @@ class CmdAddNode(ClusterCompleter):
             self.parser.error("you must specify one or more node aliases via "
                               "the -a option when using -x")
         if self.opts.reload_plugins:
-            template = self.opts.cluster_template or self.cm.get_default_cluster_template()
+            template = (self.opts.cluster_template
+                        or self.cm.get_default_cluster_template())
             plugins = self.cm.get_cluster_template(template, tag).plugins
         else:
             plugins = None

@@ -27,16 +27,19 @@ from starcluster.utils import print_timing
 class BashRunner(DefaultClusterSetup):
     """Bash Runner"""
 
-    def __init__(self, bash_file=None, forward_ssh_agent=False, master_only=False):
+    def __init__(self, bash_file=None, forward_ssh_agent=False,
+                 master_only=False):
         super(BashRunner, self).__init__()
         self.bash_file = bash_file
         if isinstance(forward_ssh_agent, basestring):
-            self.forward_ssh_agent = forward_ssh_agent.lower().strip() == 'true'
+            forward_ssh_agent = forward_ssh_agent.lower().strip()
+            self.forward_ssh_agent = forward_ssh_agent == 'true'
         else:
             self.forward_ssh_agent = forward_ssh_agent
 
         if isinstance(master_only, basestring):
-            self.master_only = master_only.lower().strip() == 'true'
+            master_only = master_only.lower().strip()
+            self.master_only = master_only == 'true'
         else:
             self.master_only = master_only
 
@@ -58,7 +61,8 @@ class BashRunner(DefaultClusterSetup):
             log.info("$ %s" % command.strip())
         cmd = "\n".join(commands)
         for node in nodes:
-            self.pool.simple_job(node.ssh.execute,
+            self.pool.simple_job(
+                node.ssh.execute,
                 args=(cmd,),
                 kwargs={'forward_ssh_agent': self.forward_ssh_agent},
                 jobid=node.alias)

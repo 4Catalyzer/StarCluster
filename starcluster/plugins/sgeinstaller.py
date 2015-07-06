@@ -33,7 +33,8 @@ class SGEInstaller(clustersetup.DefaultClusterSetup):
         self.path = path
         self.dest = '/opt/sge6-fresh'
         if isinstance(skip_if_installed, basestring):
-            self.skip_if_installed = skip_if_installed.lower().strip() == 'true'
+            skip_if_installed = skip_if_installed.lower().strip()
+            self.skip_if_installed = skip_if_installed == 'true'
         else:
             self.skip_if_installed = skip_if_installed
 

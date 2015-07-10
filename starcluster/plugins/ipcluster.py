@@ -102,8 +102,12 @@ class IPCluster(IPClusterBase):
     """
     def __init__(self, enable_notebook=False, notebook_passwd=None,
                  notebook_directory=None, packer=None, log_level='INFO',
+                 master_is_exec_host=True, slots_per_host=None,
                  **kwargs):
-        super(IPCluster, self).__init__(**kwargs)
+        super(IPCluster, self).__init__(
+            master_is_exec_host=master_is_exec_host,
+            slots_per_host=slots_per_host,
+            **kwargs)
         if isinstance(enable_notebook, basestring):
             self.enable_notebook = enable_notebook.lower().strip() == 'true'
         else:

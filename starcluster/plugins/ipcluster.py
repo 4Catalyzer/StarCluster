@@ -260,19 +260,21 @@ class IPCluster(IPClusterBase):
             sha1py = 'from IPython.lib import passwd; print passwd("%s")'
             sha1cmd = "python -c '%s'" % sha1py
             sha1pass = master.ssh.execute(sha1cmd % self.notebook_passwd)[0]
-            configs_password = ["c.NotebookApp.password = u'%s'" % sha1pass,]
+            configs_password = ["c.NotebookApp.password = u'%s'" % sha1pass, ]
             notebook_passwd = self.notebook_passwd
 
-        configs = ([
-            "c = get_config()",
-            "c.IPKernelApp.pylab = 'inline'",
-            "c.NotebookApp.certfile = u'%s'" % ssl_cert,
-            "c.NotebookApp.ip = '*'",
-            "c.NotebookApp.open_browser = False",
-        ] + configs_password +
-        [
-            "c.NotebookApp.port = %d" % notebook_port,
-        ])
+        configs = (
+            [
+                "c = get_config()",
+                "c.IPKernelApp.pylab = 'inline'",
+                "c.NotebookApp.certfile = u'%s'" % ssl_cert,
+                "c.NotebookApp.ip = '*'",
+                "c.NotebookApp.open_browser = False",
+            ] + configs_password +
+            [
+                "c.NotebookApp.port = %d" % notebook_port,
+            ]
+        )
 
         f.write('\n'.join(configs))
         f.close()

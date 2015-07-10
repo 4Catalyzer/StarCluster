@@ -103,6 +103,7 @@ class IPCluster(IPClusterBase):
     def __init__(self, enable_notebook=False, notebook_passwd=None,
                  notebook_directory=None, packer=None, log_level='INFO',
                  master_is_exec_host=True, slots_per_host=None,
+                 no_passwd=False,
                  **kwargs):
         super(IPCluster, self).__init__(
             master_is_exec_host=master_is_exec_host,
@@ -113,6 +114,7 @@ class IPCluster(IPClusterBase):
         else:
             self.enable_notebook = enable_notebook
         self.notebook_passwd = notebook_passwd or utils.generate_passwd(16)
+        self.no_passwd = no_passwd.lower().strip() == 'true'
         self.notebook_directory = notebook_directory
         self.log_level = log_level
         if packer not in (None, 'json', 'pickle', 'msgpack'):
@@ -250,18 +252,29 @@ class IPCluster(IPClusterBase):
         f = master.ssh.remote_file('%s/ipython_notebook_config.py' %
                                    profile_dir)
         notebook_port = 8888
-        sha1py = 'from IPython.lib import passwd; print passwd("%s")'
-        sha1cmd = "python -c '%s'" % sha1py
-        sha1pass = master.ssh.execute(sha1cmd % self.notebook_passwd)[0]
-        f.write('\n'.join([
+
+        if self.no_passwd and master.public_dns_name == '':
+            configs_password = []
+            notebook_passwd = None
+        else:
+            sha1py = 'from IPython.lib import passwd; print passwd("%s")'
+            sha1cmd = "python -c '%s'" % sha1py
+            sha1pass = master.ssh.execute(sha1cmd % self.notebook_passwd)[0]
+            configs_password = ["c.NotebookApp.password = u'%s'" % sha1pass,]
+            notebook_passwd = self.notebook_passwd
+
+        configs = ([
             "c = get_config()",
             "c.IPKernelApp.pylab = 'inline'",
             "c.NotebookApp.certfile = u'%s'" % ssl_cert,
             "c.NotebookApp.ip = '*'",
             "c.NotebookApp.open_browser = False",
-            "c.NotebookApp.password = u'%s'" % sha1pass,
+        ] + configs_password +
+        [
             "c.NotebookApp.port = %d" % notebook_port,
-        ]))
+        ])
+
+        f.write('\n'.join(configs))
         f.close()
         if self.notebook_directory is not None:
             if not master.ssh.path_exists(self.notebook_directory):
@@ -274,7 +287,12 @@ class IPCluster(IPClusterBase):
         self._authorize_port(master, notebook_port, 'notebook')
         log.info("IPython notebook URL: https://%s:%s" %
                  (master.dns_name or master.private_ip_address, notebook_port))
-        log.info("The notebook password is: %s" % self.notebook_passwd)
+
+        if notebook_passwd is not None:
+            log.info("The notebook password is: %s" % notebook_passwd)
+        else:
+            log.info("There is no notebook password.")
+
         log.warn("Please check your local firewall settings if you're having "
                  "issues connecting to the IPython notebook",
                  extra=dict(__textwrap__=True))

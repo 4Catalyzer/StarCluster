@@ -114,7 +114,7 @@ class IPCluster(IPClusterBase):
         else:
             self.enable_notebook = enable_notebook
         self.notebook_passwd = notebook_passwd or utils.generate_passwd(16)
-        self.no_passwd = no_passwd.lower().strip() == 'true'
+        self.no_passwd = str(no_passwd).lower().strip() == 'true'
         self.notebook_directory = notebook_directory
         self.log_level = log_level
         if packer not in (None, 'json', 'pickle', 'msgpack'):

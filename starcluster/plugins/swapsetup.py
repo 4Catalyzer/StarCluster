@@ -39,8 +39,11 @@ class SwapSetup(DefaultClusterSetup):
         log.info("Setting up swap")
 
         commands = []
-        commands.append('fallocate -l %s %s' % (self.amount, self.swap_file))
-        commands.append('chmod 600 %s' % self.swap_file)
+        if self.swap_file.startswith('/dev/'):
+            commands.append('umount %s' % self.swap_file)
+        else:
+            commands.append('fallocate -l %s %s' % (self.amount, self.swap_file))
+            commands.append('chmod 600 %s' % self.swap_file)
         commands.append('mkswap %s' % self.swap_file)
         commands.append('swapon %s' % self.swap_file)
         commands.append('swapon -s')

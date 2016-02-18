@@ -50,6 +50,9 @@ class PyPkgInstaller(DefaultClusterSetup):
         super(PyPkgInstaller, self).__init__()
         self.install_command = install_command
         self.packages = [p.strip() for p in packages.split(",") if p.strip()]
+        # We add this to deal with parallel now being required for parallel ipython
+        if 'ipython' in self.packages and 'ipython[parallel]' not in self.packages:
+            self.packages += ['ipython[parallel]']        
 
     @print_timing("PyPkgInstaller")
     def install_packages(self, nodes, dest='all nodes'):

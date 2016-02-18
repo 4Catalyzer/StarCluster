@@ -25,7 +25,7 @@ from starcluster.utils import print_timing
 class SwapSetup(DefaultClusterSetup):
     """Setup swap space"""
 
-    def __init__(self, swap_file="/swapfile", amount=None):
+    def __init__(self, swap_file="/dev/xvdaa", amount=None):
         super(SwapSetup, self).__init__()
         self.swap_file = swap_file
         self.amount = amount and amount.strip()

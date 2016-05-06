@@ -47,6 +47,7 @@ class PackageInstaller(clustersetup.DefaultClusterSetup):
             self.pool.simple_job(node.apt_install, (pkgs), jobid=node.alias)
         self.pool.wait(len(nodes))
 
+    @print_timing("PackageInstaller")
     def on_add_node(self, new_node, nodes, master, user, user_shell, volumes):
         log.info('Installing the following packages on %s:' % new_node.alias)
         log.info(', '.join(self.packages), extra=dict(__raw__=True))

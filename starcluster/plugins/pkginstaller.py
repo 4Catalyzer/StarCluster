@@ -17,6 +17,7 @@
 
 from starcluster import clustersetup
 from starcluster.logger import log
+from starcluster.utils import print_timing
 
 
 class PackageInstaller(clustersetup.DefaultClusterSetup):
@@ -33,7 +34,8 @@ class PackageInstaller(clustersetup.DefaultClusterSetup):
         self.packages = packages
         if packages:
             self.packages = [pkg.strip() for pkg in packages.split(',')]
-
+    
+    @print_timing("PackageInstaller")
     def run(self, nodes, master, user, user_shell, volumes):
         if not self.packages:
             log.info("No packages specified!")

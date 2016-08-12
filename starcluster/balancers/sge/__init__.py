@@ -73,7 +73,19 @@ class SGEStats(object):
                     if hvalue.nodeType == xml.dom.minidom.Node.TEXT_NODE:
                         val = hvalue.data
                     hash[attr] = val
-            if hash['name'] != u'global':
+            qs = h.getElementsByTagName("queue")
+            bad = False
+            for qv in [] if len(qs) == 0 else qs[0].getElementsByTagName("queuevalue"):
+                for hvalue in qv.childNodes:
+                    attr = qv.attributes['name'].value
+                    if attr != 'state_string':
+                        continue
+                    val = ""
+                    if hvalue.nodeType == xml.dom.minidom.Node.TEXT_NODE:
+                        val = hvalue.data
+                        if 'au' in val:
+                            bad = True
+            if not bad and hash['name'] != u'global' and hash['name'] != u'master':
                 self.hosts.append(hash)
         return self.hosts
 
@@ -529,7 +541,7 @@ class SGELoadBalancer(LoadBalancer):
         qatime = self.get_qatime(now)
         qacct_cmd = 'qacct -j -b ' + qatime
         qstat_cmd = 'qstat -u \* -xml -f -r'
-        qhostxml = '\n'.join(master.ssh.execute('qhost -xml'))
+        qhostxml = '\n'.join(master.ssh.execute('qhost -xml -q'))
         qstatxml = '\n'.join(master.ssh.execute(qstat_cmd))
         try:
             qacct = '\n'.join(master.ssh.execute(qacct_cmd))

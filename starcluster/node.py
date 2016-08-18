@@ -765,7 +765,19 @@ class Node(object):
         for path in remote_paths:
             if not self.ssh.path_exists(path):
                 self.ssh.makedirs(path)
-            self.ssh.execute('mount %s' % path)
+
+            count = 0
+            while True:
+                try:
+                    self.ssh.execute('mount %s' % path)
+                    break
+                except exception.RemoteCommandFailed:
+                    count += 1
+                    if count > 5:
+                        raise
+                    else:
+                        log.error(
+                            "Attempt to mount %s failed #%d", path, count)
 
     def get_mount_map(self):
         mount_map = {}

@@ -692,7 +692,9 @@ class SGELoadBalancer(LoadBalancer):
         whether or not to add nodes to the cluster. Returns the number of nodes
         to add.
         """
-        num_nodes = len(self._cluster.nodes)
+        nodes = self._cluster.nodes
+        worker_nodes = [n for n in nodes if not n.is_master()]
+        num_nodes = len(worker_nodes)
         if num_nodes >= self.max_nodes:
             log.info("Not adding nodes: already at or above maximum (%d)" %
                      self.max_nodes)

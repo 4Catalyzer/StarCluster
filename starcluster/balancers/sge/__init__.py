@@ -99,6 +99,8 @@ class SGEStats(object):
         for q in doc.getElementsByTagName("Queue-List"):
             name = q.getElementsByTagName("name")[0].childNodes[0].data
             slots = q.getElementsByTagName("slots_total")[0].childNodes[0].data
+            state = ''if len(q.getElementsByTagName("state")) == 0 else q.getElementsByTagName("state")[0].childNodes[0].data
+            slots = 0 if 'au' in state else slots
             self.queues[name] = dict(slots=int(slots))
             for job in q.getElementsByTagName("job_list"):
                 self.jobs.extend(self._parse_job(job, queue_name=name))
@@ -738,7 +740,7 @@ class SGELoadBalancer(LoadBalancer):
             log.warn("Adding %d nodes at %s" %
                      (need_to_add, str(utils.get_utc_now())))
             try:
-                self._cluster.add_nodes(need_to_add)
+                self._cluster.add_nodes(need_to_add, force_flat=True, image_id=os.environ['CURRENT_AMI'])
                 self.__last_cluster_mod_time = utils.get_utc_now()
                 log.info("Done adding nodes at %s" %
                          str(self.__last_cluster_mod_time))
@@ -755,7 +757,9 @@ class SGELoadBalancer(LoadBalancer):
             return
         if not self.has_cluster_stabilized():
             return
-        num_nodes = len(self._cluster.nodes)
+        nodes = self._cluster.nodes
+        worker_nodes = [n for n in nodes if not n.is_master()]
+        num_nodes = len(worker_nodes)
         if num_nodes <= self.min_nodes:
             log.info("Not removing nodes: already at or below minimum (%d)"
                      % self.min_nodes)

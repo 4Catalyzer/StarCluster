@@ -778,6 +778,7 @@ class Node(object):
                     else:
                         log.error(
                             "Attempt to mount %s failed #%d", path, count)
+                        time.sleep(5)
 
     def get_mount_map(self):
         mount_map = {}

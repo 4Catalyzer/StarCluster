@@ -17,6 +17,9 @@
 
 """
 """
+import os
+import subprocess
+
 from starcluster.clustersetup import DefaultClusterSetup
 from starcluster.logger import log
 from starcluster.utils import print_timing
@@ -40,6 +43,10 @@ class SwapSetup(DefaultClusterSetup):
 
         commands = []
         if self.swap_file.startswith('/dev/'):
+            drive_name = os.path.split(self.swap_file)[-1]
+            if subprocess.call("lsblk | grep %s" % drive_name, shell=True) != 0:
+                log.info("%s does not exist", self.swap_file)
+                return
             commands.append('umount %s' % self.swap_file)
         else:
             commands.append('fallocate -l %s %s' % (self.amount, self.swap_file))

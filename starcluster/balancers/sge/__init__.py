@@ -779,7 +779,7 @@ class SGELoadBalancer(LoadBalancer):
             log.warn("Removing %s: %s (%s)" %
                      (node.alias, node.id, node.dns_name))
             try:
-                self._cluster.remove_node(node)
+                self._cluster.remove_node(node, force=True)
                 self.__last_cluster_mod_time = utils.get_utc_now()
             except Exception:
                 log.error("Failed to remove node %s" % node.alias,

@@ -943,6 +943,10 @@ class Cluster(object):
                          "following regions:\n%s" % cluster_regions)
                 log.warn("Instances will not be launched in a placement group")
                 placement_group = None
+            elif instance_type in ['p2.xlarge']:
+                log.warn("Placement groups not supported for %s", instance_type)
+                log.warn("Instances will not be launched in a placement group")
+                placement_group = None
             elif not placement_group:
                 placement_group = self.placement_group.name
         image_id = image_id or self.node_image_id

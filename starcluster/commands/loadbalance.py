@@ -117,5 +117,8 @@ class CmdLoadBalance(ClusterCompleter):
             self.parser.error("please specify a <cluster_tag>")
         cluster_tag = args[0]
         cluster = self.cm.get_cluster(cluster_tag)
+        template = self.cm.get_default_cluster_template()
+        plugins = self.cm.get_cluster_template(template, cluster_tag).plugins
+        cluster.plugins = plugins
         lb = sge.SGELoadBalancer(**self.specified_options_dict)
         lb.run(cluster)

@@ -20,6 +20,8 @@ from starcluster.balancers import sge
 
 from completers import ClusterCompleter
 
+def _int(option, opt_str, value, parser):
+    setattr(parser.values, option.dest, value)
 
 class CmdLoadBalance(ClusterCompleter):
     """
@@ -98,7 +100,7 @@ class CmdLoadBalance(ClusterCompleter):
                           help="Minutes to look back for past job history")
         parser.add_option("-n", "--min_nodes", dest="min_nodes",
                           action="callback", type="int", default=None,
-                          callback=self._positive_int,
+                          callback=_int,
                           help="Minimum number of nodes in cluster")
         parser.add_option("-K", "--kill-cluster", dest="kill_cluster",
                           action="store_true", default=False,

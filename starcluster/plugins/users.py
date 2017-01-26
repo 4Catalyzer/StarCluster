@@ -73,6 +73,14 @@ class CreateUsers(clustersetup.DefaultClusterSetup):
                                  ("echo -n '%s' | xargs -L 1 -I '{}' sh -c 'echo {} | newusers'" % newusers),
                                  jobid=node.alias)
         self.pool.wait(numtasks=len(nodes))
+
+        for node in nodes:
+            add_user_str = "; ".join(["usermod -a -G docker %s" % u for u in self._usernames])
+            self.pool.simple_job(node.ssh.execute,
+                                 (add_user_str),
+                                 jobid=node.alias)
+        self.pool.wait(numtasks=len(nodes))
+
         log.info("Configuring passwordless ssh for %d cluster users" %
                  self._num_users)
         pbar = self.pool.progress_bar.reset()
@@ -164,6 +172,8 @@ class CreateUsers(clustersetup.DefaultClusterSetup):
             master.add_to_known_hosts(user, [node])
             pbar.update(i + 1)
         pbar.finish()
+        add_user_str = "; ".join(["usermod -a -G docker %s" % u for u in self._usernames])
+        node.ssh.execute(add_user_str)
         self._setup_scratch(nodes=[node], users=self._usernames)
 
     def on_remove_node(self, node, nodes, master, user, user_shell, volumes):

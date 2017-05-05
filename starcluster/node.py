@@ -720,8 +720,6 @@ class Node(object):
         self.ssh.execute("mkdir -p %s" % DUMMY_EXPORT_DIR)
         with self.ssh.remote_file(DUMMY_EXPORT_FILE, 'w') as dummyf:
             dummyf.write(DUMMY_EXPORT_LINE)
-        self.ssh.execute(
-            'apt-get install rpcbind nfs-common nfs-kernel-server rxvt -y')
         self.ssh.execute('service nfs-kernel-server start')
         # self.ssh.execute('/etc/init.d/nfs-kernel-server start')
         # self.ssh.execute('/etc/init.d/nfs start')
@@ -737,8 +735,6 @@ class Node(object):
         remote_paths - list of remote paths to mount from server_node
         """
 
-        # self.ssh.execute(
-        #     'apt-get install rpcbind nfs-common nfs-kernel-server rxvt -y')
         self.ssh.execute('service rpcbind start', ignore_exit_status=True)
         # self.ssh.execute('/etc/init.d/portmap start')
         # TODO: move this fix for xterm somewhere else

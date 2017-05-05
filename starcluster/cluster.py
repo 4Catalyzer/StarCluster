@@ -418,7 +418,6 @@ class Cluster(object):
                  disable_cloudinit=False,
                  subnet_id=None,
                  public_ips=None,
-                 spot_bid_master=None,
                  **kwargs):
         # update class vars with given vars
         _vars = locals().copy()
@@ -1225,8 +1224,7 @@ class Cluster(object):
             master_alias,
             image_id=mimage,
             instance_type=mtype,
-            force_flat=force_flat,
-            spot_bid=self.spot_bid_master or self.spot_bid)
+            force_flat=force_flat)
         insts, spot_reqs = [], []
         zone = None
         if not force_flat and self.spot_bid:

@@ -17,6 +17,7 @@
 
 from starcluster import clustersetup
 from starcluster.logger import log
+from starcluster.utils import print_timing
 
 
 class PackageInstaller(clustersetup.DefaultClusterSetup):
@@ -33,7 +34,8 @@ class PackageInstaller(clustersetup.DefaultClusterSetup):
         self.packages = packages
         if packages:
             self.packages = [pkg.strip() for pkg in packages.split(',')]
-
+    
+    @print_timing("PackageInstaller")
     def run(self, nodes, master, user, user_shell, volumes):
         if not self.packages:
             log.info("No packages specified!")
@@ -45,8 +47,10 @@ class PackageInstaller(clustersetup.DefaultClusterSetup):
             self.pool.simple_job(node.apt_install, (pkgs), jobid=node.alias)
         self.pool.wait(len(nodes))
 
+    @print_timing("PackageInstaller")
     def on_add_node(self, new_node, nodes, master, user, user_shell, volumes):
         log.info('Installing the following packages on %s:' % new_node.alias)
+        log.info(', '.join(self.packages), extra=dict(__raw__=True))
         pkgs = ' '.join(self.packages)
         new_node.apt_install(pkgs)
 

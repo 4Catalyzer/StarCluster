@@ -17,6 +17,7 @@
 
 from starcluster import static
 from completers import ClusterCompleter
+from starcluster import completion
 
 
 class CmdAddNode(ClusterCompleter):
@@ -70,6 +71,9 @@ class CmdAddNode(ClusterCompleter):
     tag = None
 
     def addopts(self, parser):
+        templates = []
+        if self.cfg:
+            templates = self.cfg.clusters.keys()
         parser.add_option(
             "-a", "--alias", dest="alias", action="append", type="string",
             default=[], help="alias to give to the new node "
@@ -100,6 +104,9 @@ class CmdAddNode(ClusterCompleter):
             help="do not launch new EC2 instances when "
             "adding nodes (use existing instances instead)")
         parser.add_option(
+            "--force-flat", dest="force_flat", action="store_true",
+            default=False, help="Use on-demand price")
+        parser.add_option(
             "--reboot-interval", dest="reboot_interval", type="int",
             default=10, help="Delay in minutes beyond which a node is "
             "rebooted if it's still being unreachable via SSH. Defaults "
@@ -115,6 +122,15 @@ class CmdAddNode(ClusterCompleter):
             "--ignore-grp", dest="ignore_grp", action="store_true",
             default=False,
             help="if set, instances of type will not use the placement group")
+        parser.add_option(
+            "--reload-plugins", dest="reload_plugins", action="store_true",
+            default=False, help="reload_plugins from config")
+        opt = parser.add_option("-c", "--cluster-template", action="store",
+                                dest="cluster_template", choices=templates,
+                                default=None, help="cluster template to use "
+                                "from the config file")
+        if completion:
+            opt.completer = completion.ListCompleter(opt.choices)
 
     def execute(self, args):
         if len(args) != 1:
@@ -142,6 +158,13 @@ class CmdAddNode(ClusterCompleter):
 
         placement_group = False if self.opts.ignore_grp else None
 
+        if self.opts.reload_plugins:
+            template = (self.opts.cluster_template
+                        or self.cm.get_default_cluster_template())
+            plugins = self.cm.get_cluster_template(template, tag).plugins
+        else:
+            plugins = None
+
         self.cm.add_nodes(tag, num_nodes, aliases=aliases,
                           image_id=self.opts.image_id,
                           instance_type=self.opts.instance_type,
@@ -149,4 +172,6 @@ class CmdAddNode(ClusterCompleter):
                           no_create=self.opts.no_create,
                           reboot_interval=self.opts.reboot_interval,
                           n_reboot_restart=self.opts.n_reboot_restart,
-                          placement_group=placement_group)
+                          placement_group=placement_group,
+                          force_flat=self.opts.force_flat, plugins=plugins
+        )

@@ -22,6 +22,7 @@ from starcluster import exception
 from starcluster import completion
 from starcluster.templates import user_msgs
 from starcluster.logger import log
+from starcluster.utils import AttributeDict
 
 from completers import ClusterCompleter
 
@@ -74,6 +75,9 @@ class CmdStart(ClusterCompleter):
         parser.add_option("-q", "--disable-queue", dest="disable_queue",
                           action="store_true", default=None,
                           help="do not configure a queueing system (SGE)")
+        parser.add_option("--disable-default", dest="disable_default",
+                          action="store_true", default=None,
+                          help="do not configure default plugin")
         parser.add_option("-Q", "--enable-queue", dest="disable_queue",
                           action="store_false", default=None,
                           help="configure a queueing system (SGE) (default)")
@@ -190,6 +194,9 @@ class CmdStart(ClusterCompleter):
         parser.add_option("--dns-suffix", action="store_true",
                           dest="dns_suffix", help="Suffix dns names of all "
                           " nodes in the cluster with the cluster tag.")
+        parser.add_option("--volumes", dest="volumes",
+                          action="append", default=None,
+                          help="Specify the volumes to use with cluster")
 
     def execute(self, args):
         if len(args) != 1:
@@ -245,7 +252,19 @@ class CmdStart(ClusterCompleter):
                     raise e
                 log.info("Using default cluster template: %s" % template)
             scluster = self.cm.get_cluster_template(template, tag)
+
+        if self.opts.volumes is not None:
+            volumes_orig = [x for x in
+                            (y.strip() for y in self.opts.volumes)
+                            if x]
+            self.opts.volumes = AttributeDict()
+            for key in volumes_orig:
+                self.opts.volumes[key] = vol = self.cfg.vols.get(key).copy()
+                del vol['__name__']
+                self.opts.volumes = scluster.load_volumes(self.opts.volumes)
+
         scluster.update(self.specified_options_dict, True)
+
         if self.opts.keyname and not self.opts.key_location:
             key = self.cfg.get_key(self.opts.keyname)
             scluster.key_location = key.key_location

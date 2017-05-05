@@ -39,12 +39,15 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
     SGE_INST = "inst_sge_sc"
     SGE_CONF = "ec2_sge.conf"
 
-    def __init__(self, master_is_exec_host=True, slots_per_host=None,
+    def __init__(self,
+                 master_is_exec_host=True, slots_per_host=None,
+                 is_son=False,
                  **kwargs):
         self.master_is_exec_host = str(master_is_exec_host).lower() == "true"
         self.slots_per_host = None
         if slots_per_host is not None:
             self.slots_per_host = int(slots_per_host)
+        self.is_son = str(is_son).lower() == "true"
         super(SGEPlugin, self).__init__(**kwargs)
 
     def _add_sge_submit_host(self, node):
@@ -88,7 +91,10 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
             pe_slots = self.slots_per_host * len(nodes)
         if not pe_exists:
             penv = mssh.remote_file("/tmp/pe.txt", "w")
-            penv.write(sge.sge_pe_template % (name, pe_slots))
+            sge_pe_template = sge.sge_pe_template
+            if self.is_son:
+                sge_pe_template += "qsort_args        NONE\n"
+            penv.write(sge_pe_template % (name, pe_slots))
             penv.close()
             mssh.execute("qconf -Ap %s" % penv.name)
         else:
@@ -107,14 +113,18 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
             inst_sge += '-x '
         inst_sge += '-noremote -auto ./%s' % self.SGE_CONF
         node.ssh.execute(inst_sge, silent=True, only_printable=True)
-        if exec_host:
-            num_slots = self.slots_per_host
-            if num_slots is None:
-                num_slots = node.num_processors
-            node.ssh.execute("qconf -aattr hostgroup hostlist %s @allhosts" %
-                             node.alias)
-            node.ssh.execute('qconf -aattr queue slots "[%s=%d]" all.q' %
-                             (node.alias, num_slots))
+
+        num_slots = self.slots_per_host
+        if num_slots is None:
+            num_slots = node.num_processors
+        node.ssh.execute("qconf -aattr hostgroup hostlist %s @allhosts" %
+                         node.alias)
+
+        if not exec_host:
+            num_slots = 0
+
+        node.ssh.execute('qconf -aattr queue slots "[%s=%d]" all.q' %
+                         (node.alias, num_slots))
 
     def _sge_path(self, path):
         return posixpath.join(self.SGE_ROOT, path)
@@ -154,9 +164,15 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         submit_hosts = admin_hosts
         exec_hosts = admin_hosts
         sge_conf = master.ssh.remote_file(self._sge_path(self.SGE_CONF), "w")
-        conf = sge.sgeinstall_template % dict(admin_hosts=admin_hosts,
-                                              submit_hosts=submit_hosts,
-                                              exec_hosts=exec_hosts)
+        sgeinstall_template = sge.sgeinstall_template
+        if self.is_son:
+            sgeinstall_template = '\n'.join(
+                x
+                for x in sgeinstall_template.splitlines()
+                if not x.startswith('DB_SPOOLING_SERVER'))
+        conf = sgeinstall_template % dict(admin_hosts=admin_hosts,
+                                          submit_hosts=submit_hosts,
+                                          exec_hosts=exec_hosts)
         sge_conf.write(conf)
         sge_conf.close()
         log.info("Installing Sun Grid Engine...")

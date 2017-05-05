@@ -76,7 +76,17 @@ def _start_engines(node, user, n_engines=None, kill_existing=False):
     node.ssh.switch_user('root')
 
 
-class IPCluster(DefaultClusterSetup):
+class IPClusterBase(DefaultClusterSetup):
+    def __init__(self, master_is_exec_host=True, slots_per_host=None,
+                 **kwargs):
+        super(IPClusterBase, self).__init__(**kwargs)
+        self.master_is_exec_host = str(master_is_exec_host).lower() == "true"
+        self.slots_per_host = None
+        if slots_per_host is not None:
+            self.slots_per_host = int(slots_per_host)
+
+
+class IPCluster(IPClusterBase):
     """Start an IPython (>= 0.13) cluster
 
     Example config:
@@ -91,13 +101,20 @@ class IPCluster(DefaultClusterSetup):
 
     """
     def __init__(self, enable_notebook=False, notebook_passwd=None,
-                 notebook_directory=None, packer=None, log_level='INFO'):
-        super(IPCluster, self).__init__()
+                 notebook_directory=None, packer=None, log_level='INFO',
+                 master_is_exec_host=True, slots_per_host=None,
+                 no_passwd=False,
+                 **kwargs):
+        super(IPCluster, self).__init__(
+            master_is_exec_host=master_is_exec_host,
+            slots_per_host=slots_per_host,
+            **kwargs)
         if isinstance(enable_notebook, basestring):
             self.enable_notebook = enable_notebook.lower().strip() == 'true'
         else:
             self.enable_notebook = enable_notebook
         self.notebook_passwd = notebook_passwd or utils.generate_passwd(16)
+        self.no_passwd = str(no_passwd).lower().strip() == 'true'
         self.notebook_directory = notebook_directory
         self.log_level = log_level
         if packer not in (None, 'json', 'pickle', 'msgpack'):
@@ -118,7 +135,8 @@ class IPCluster(DefaultClusterSetup):
         master.ssh.execute("rm -rf '%s'" % profile_dir)
         master.ssh.execute('ipython profile create')
         f = master.ssh.remote_file('%s/ipcontroller_config.py' % profile_dir)
-        ssh_server = "@".join([user, master.public_dns_name])
+        public_dns_name = master.public_dns_name or master.private_ip_address
+        ssh_server = "@".join([user, public_dns_name])
         f.write('\n'.join([
             "c = get_config()",
             "c.HubFactory.ip='%s'" % master.private_ip_address,
@@ -163,7 +181,9 @@ class IPCluster(DefaultClusterSetup):
         f.close()
 
     def _start_cluster(self, master, profile_dir):
-        n_engines = max(1, master.num_processors - 1)
+        n_engines = max(1, (self.slots_per_host or master.num_processors) - 1)
+        if not self.master_is_exec_host:
+            n_engines = 0
         log.info("Starting the IPython controller and %i engines on master"
                  % n_engines)
         # cleanup existing connection files, to prevent their use
@@ -221,7 +241,8 @@ class IPCluster(DefaultClusterSetup):
         ssl_cert = posixpath.join(profile_dir, '%s.pem' % user)
         if not master.ssh.isfile(user_cert):
             log.info("Creating SSL certificate for user %s" % user)
-            ssl_subj = "/C=US/ST=SC/L=STAR/O=Dis/CN=%s" % master.dns_name
+            dns_name = master.dns_name or '/'
+            ssl_subj = "/C=US/ST=SC/L=STAR/O=Dis/CN=%s" % dns_name
             master.ssh.execute(
                 "openssl req -new -newkey rsa:4096 -days 365 "
                 '-nodes -x509 -subj %s -keyout %s -out %s' %
@@ -231,18 +252,31 @@ class IPCluster(DefaultClusterSetup):
         f = master.ssh.remote_file('%s/ipython_notebook_config.py' %
                                    profile_dir)
         notebook_port = 8888
-        sha1py = 'from IPython.lib import passwd; print passwd("%s")'
-        sha1cmd = "python -c '%s'" % sha1py
-        sha1pass = master.ssh.execute(sha1cmd % self.notebook_passwd)[0]
-        f.write('\n'.join([
-            "c = get_config()",
-            "c.IPKernelApp.pylab = 'inline'",
-            "c.NotebookApp.certfile = u'%s'" % ssl_cert,
-            "c.NotebookApp.ip = '*'",
-            "c.NotebookApp.open_browser = False",
-            "c.NotebookApp.password = u'%s'" % sha1pass,
-            "c.NotebookApp.port = %d" % notebook_port,
-        ]))
+
+        if self.no_passwd and master.public_dns_name == '':
+            configs_password = []
+            notebook_passwd = None
+        else:
+            sha1py = 'from IPython.lib import passwd; print passwd("%s")'
+            sha1cmd = "python -c '%s'" % sha1py
+            sha1pass = master.ssh.execute(sha1cmd % self.notebook_passwd)[0]
+            configs_password = ["c.NotebookApp.password = u'%s'" % sha1pass, ]
+            notebook_passwd = self.notebook_passwd
+
+        configs = (
+            [
+                "c = get_config()",
+                "c.IPKernelApp.pylab = 'inline'",
+                "c.NotebookApp.certfile = u'%s'" % ssl_cert,
+                "c.NotebookApp.ip = '*'",
+                "c.NotebookApp.open_browser = False",
+            ] + configs_password +
+            [
+                "c.NotebookApp.port = %d" % notebook_port,
+            ]
+        )
+
+        f.write('\n'.join(configs))
         f.close()
         if self.notebook_directory is not None:
             if not master.ssh.path_exists(self.notebook_directory):
@@ -254,8 +288,13 @@ class IPCluster(DefaultClusterSetup):
             master.ssh.execute_async("ipython notebook --no-browser")
         self._authorize_port(master, notebook_port, 'notebook')
         log.info("IPython notebook URL: https://%s:%s" %
-                 (master.dns_name, notebook_port))
-        log.info("The notebook password is: %s" % self.notebook_passwd)
+                 (master.dns_name or master.private_ip_address, notebook_port))
+
+        if notebook_passwd is not None:
+            log.info("The notebook password is: %s" % notebook_passwd)
+        else:
+            log.info("There is no notebook password.")
+
         log.warn("Please check your local firewall settings if you're having "
                  "issues connecting to the IPython notebook",
                  extra=dict(__textwrap__=True))
@@ -288,12 +327,14 @@ class IPCluster(DefaultClusterSetup):
         cfile, n_engines_master = self._start_cluster(master, profile_dir)
         # Start engines on each of the non-master nodes
         non_master_nodes = [node for node in nodes if not node.is_master()]
+        n_engines_non_master = 0
         for node in non_master_nodes:
+            n_engines = self.slots_per_host or node.num_processors
             self.pool.simple_job(
-                _start_engines, (node, user, node.num_processors),
+                _start_engines, (node, user, n_engines),
                 jobid=node.alias)
-        n_engines_non_master = sum(node.num_processors
-                                   for node in non_master_nodes)
+            n_engines_non_master += n_engines
+
         if len(non_master_nodes) > 0:
             log.info("Adding %d engines on %d nodes",
                      n_engines_non_master, len(non_master_nodes))
@@ -310,9 +351,9 @@ class IPCluster(DefaultClusterSetup):
 
     def on_add_node(self, node, nodes, master, user, user_shell, volumes):
         self._check_ipython_installed(node)
-        n_engines = node.num_processors
+        n_engines = self.slots_per_host or node.num_processors
         log.info("Adding %d engines on %s", n_engines, node.alias)
-        _start_engines(node, user)
+        _start_engines(node, user, n_engines=n_engines)
 
     def on_remove_node(self, node, nodes, master, user, user_shell, volumes):
         raise NotImplementedError("on_remove_node method not implemented")
@@ -354,7 +395,7 @@ class IPClusterStop(DefaultClusterSetup):
         raise NotImplementedError("on_remove_node method not implemented")
 
 
-class IPClusterRestartEngines(DefaultClusterSetup):
+class IPClusterRestartEngines(IPClusterBase):
     """Plugin to kill and restart all engines of an IPython cluster
 
     This plugin can be useful to hard-reset the all the engines, for instance
@@ -368,15 +409,19 @@ class IPClusterRestartEngines(DefaultClusterSetup):
     """
     def run(self, nodes, master, user, user_shell, volumes):
         n_total = 0
+        node_count = 0
         for node in nodes:
-            n_engines = node.num_processors
+            if node.is_master() and not self.master_is_exec_host:
+                continue
+            node_count += 1
+            n_engines = self.slots_per_host or node.num_processors
             if node.is_master() and n_engines > 2:
                 n_engines -= 1
             self.pool.simple_job(
                 _start_engines, (node, user, n_engines, True),
                 jobid=node.alias)
             n_total += n_engines
-        log.info("Restarting %d engines on %d nodes", n_total, len(nodes))
+        log.info("Restarting %d engines on %d nodes", n_total, node_count)
         self.pool.wait(len(nodes))
 
     def on_add_node(self, node, nodes, master, user, user_shell, volumes):

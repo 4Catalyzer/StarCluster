@@ -75,7 +75,20 @@ class SGEStats(object):
                     if hvalue.nodeType == xml.dom.minidom.Node.TEXT_NODE:
                         val = hvalue.data
                     hash[attr] = val
-            if hash['name'] != u'global':
+
+            qs = h.getElementsByTagName("queue")
+            bad = False
+            for qv in [] if len(qs) == 0 else qs[0].getElementsByTagName("queuevalue"):
+                for hvalue in qv.childNodes:
+                    attr = qv.attributes['name'].value
+                    if attr != 'state_string':
+                        continue
+                    val = ""
+                    if hvalue.nodeType == xml.dom.minidom.Node.TEXT_NODE:
+                        val = hvalue.data
+                        if 'au' in val:
+                            bad = True
+            if not bad and hash['name'] != u'global' and hash['name'] != u'master':
                 if name in additional_config:
                     for k, v in additional_config[name].items():
                         hash[k] = v
@@ -92,6 +105,8 @@ class SGEStats(object):
         for q in doc.getElementsByTagName("Queue-List"):
             name = q.getElementsByTagName("name")[0].childNodes[0].data
             slots = q.getElementsByTagName("slots_total")[0].childNodes[0].data
+            state = ''if len(q.getElementsByTagName("state")) == 0 else q.getElementsByTagName("state")[0].childNodes[0].data
+            slots = 0 if 'au' in state else slots
             self.queues[name] = dict(slots=int(slots))
             for job in q.getElementsByTagName("job_list"):
                 self.jobs.extend(self._parse_job(job, queue_name=name))
@@ -436,7 +451,9 @@ class SGELoadBalancer(LoadBalancer):
                  min_nodes=None, kill_cluster=False, plot_stats=False,
                  plot_output_dir=None, dump_stats=False, stats_file=None,
                  reboot_interval=10, n_reboot_restart=False,
-                 ignore_grp=False, instance_type=None, spot_bid=None):
+                 ignore_grp=False, instance_type=None, spot_bid=None,
+                 slots_per_host=None
+    ):
         self._cluster = None
         self._keep_polling = True
         self._visualizer = None
@@ -455,6 +472,7 @@ class SGELoadBalancer(LoadBalancer):
         self.stats_file = stats_file
         self.plot_stats = plot_stats
         self.plot_output_dir = plot_output_dir
+        self.slots_per_host = slots_per_host
         if plot_stats:
             assert self.visualizer is not None
         if ignore_grp:
@@ -553,7 +571,7 @@ class SGELoadBalancer(LoadBalancer):
         qatime = self.get_qatime(now)
         qacct_cmd = 'qacct -j -b ' + qatime
         qstat_cmd = 'qstat -u \* -xml -f -r'
-        qhostxml = '\n'.join(master.ssh.execute('qhost -xml'))
+        qhostxml = '\n'.join(master.ssh.execute('qhost -xml -q'))
         qstatxml = '\n'.join(master.ssh.execute(qstat_cmd))
         try:
             qacct = '\n'.join(master.ssh.execute(qacct_cmd))
@@ -708,7 +726,9 @@ class SGELoadBalancer(LoadBalancer):
         whether or not to add nodes to the cluster. Returns the number of nodes
         to add.
         """
-        num_nodes = len(self._cluster.nodes)
+        nodes = self._cluster.nodes
+        worker_nodes = [n for n in nodes if not n.is_master()]
+        num_nodes = len(worker_nodes)
         if num_nodes >= self.max_nodes:
             log.info("Not adding nodes: already at or above maximum (%d)" %
                      self.max_nodes)
@@ -724,7 +744,7 @@ class SGELoadBalancer(LoadBalancer):
         running_jobs = self.stat.get_running_jobs()
         used_slots = sum([int(j['slots']) for j in running_jobs])
         qw_slots = sum([int(j['slots']) for j in queued_jobs])
-        slots_per_host = self.stat.slots_per_host()
+        slots_per_host = self.slots_per_host or self.stat.slots_per_host()
         avail_slots = total_slots - used_slots
         need_to_add = 0
         if num_nodes < self.min_nodes:
@@ -793,7 +813,9 @@ class SGELoadBalancer(LoadBalancer):
             return
         if not self.has_cluster_stabilized():
             return
-        num_nodes = len(self._cluster.nodes)
+        nodes = self._cluster.nodes
+        worker_nodes = [n for n in nodes if not n.is_master()]
+        num_nodes = len(worker_nodes)
         if num_nodes <= self.min_nodes:
             log.info("Not removing nodes: already at or below minimum (%d)"
                      % self.min_nodes)
@@ -811,7 +833,7 @@ class SGELoadBalancer(LoadBalancer):
             log.warn("Removing %s: %s (%s)" %
                      (node.alias, node.id, node.dns_name))
             try:
-                self._cluster.remove_node(node)
+                self._cluster.remove_node(node, force=True)
                 self.__last_cluster_mod_time = utils.get_utc_now()
             except ThreadPoolException as tpe:
                 traceback.print_exc()

@@ -197,17 +197,20 @@ class ClusterManager(managers.Manager):
     def add_nodes(self, cluster_name, num_nodes, aliases=None, no_create=False,
                   image_id=None, instance_type=None, zone=None,
                   placement_group=None, spot_bid=None, reboot_interval=10,
-                  n_reboot_restart=False):
+                  n_reboot_restart=False, force_flat=False, plugins=None):
         """
         Add one or more nodes to cluster
         """
         cl = self.get_cluster(cluster_name)
+        if plugins is not None:
+            cl.plugins = plugins
         return cl.add_nodes(num_nodes, aliases=aliases, image_id=image_id,
                             instance_type=instance_type, zone=zone,
                             placement_group=placement_group, spot_bid=spot_bid,
                             no_create=no_create,
                             reboot_interval=reboot_interval,
-                            n_reboot_restart=n_reboot_restart)
+                            n_reboot_restart=n_reboot_restart,
+                            force_flat=force_flat)
 
     def remove_node(self, cluster_name, alias=None, terminate=True,
                     force=False):
@@ -425,6 +428,7 @@ class Cluster(object):
                  userdata_scripts=[],
                  refresh_interval=30,
                  disable_queue=False,
+                 disable_default=False,
                  num_threads=20,
                  disable_threads=False,
                  cluster_group=None,
@@ -800,6 +804,7 @@ class Cluster(object):
                              subnet_ids=self.subnet_ids,
                              public_ips=self.public_ips,
                              disable_queue=self.disable_queue,
+                             disable_default=self.disable_default,
                              disable_cloudinit=self.disable_cloudinit,
                              plugins_order=self.plugins_order,
                              dns_suffix=self.dns_suffix)
@@ -1261,7 +1266,7 @@ class Cluster(object):
     def add_nodes(self, num_nodes, aliases=None, image_id=None,
                   instance_type=None, zone=None, placement_group=None,
                   spot_bid=None, no_create=False, reboot_interval=10,
-                  n_reboot_restart=False):
+                  n_reboot_restart=False, force_flat=False):
         """
         Add new nodes to this cluster
 
@@ -1305,8 +1310,8 @@ class Cluster(object):
             resp = self.create_nodes(aliases, image_id=image_id,
                                      instance_type=instance_type, zone=zone,
                                      placement_group=placement_group,
-                                     spot_bid=spot_bid)
-            if spot_bid or self.spot_bid:
+                                     spot_bid=spot_bid, force_flat=force_flat)
+            if not force_flat and (spot_bid or self.spot_bid):
                 streaming_add(self, spots=resp,
                               reboot_interval=reboot_interval,
                               n_reboot_restart=n_reboot_restart)
@@ -1515,10 +1520,11 @@ class Cluster(object):
         log.info("Launching master node (ami: %s, type: %s)..." %
                  (mimage, mtype))
         force_flat = not self.force_spot_master
-        master_response = self.create_node(master_alias,
-                                           image_id=mimage,
-                                           instance_type=mtype,
-                                           force_flat=force_flat)
+        master_response = self.create_node(
+            master_alias,
+            image_id=mimage,
+            instance_type=mtype,
+            force_flat=force_flat)
         insts, spot_reqs = [], []
         zone = None
         if not force_flat and self.spot_bid:
@@ -1780,6 +1786,9 @@ class Cluster(object):
         filters = {'instance.group-name': self._security_group,
                    'instance-state-name': states}
         insts = self.ec2.get_all_instances(filters=filters)
+        filters = {'placement-group-name': self.placement_group.name,
+                   'instance-state-name': states}
+        insts += self.ec2.get_all_instances(filters=filters)
         return len(insts) == 0
 
     def attach_volumes_to_master(self):
@@ -1988,6 +1997,17 @@ class Cluster(object):
             self.attach_volumes_to_master()
         self.run_plugins()
 
+    def get_all_plugins(self, plugins=None):
+        plugs = []
+        if not self.disable_default:
+            plugs.append(self._default_plugin)
+        if not self.disable_queue:
+            plugs.append(self._sge_plugin)
+        _plugs = plugins or self.plugins
+        if _plugs:
+            plugs += _plugs[:]
+        return plugs
+
     def run_plugins(self, plugins=None, method_name="run", node=None,
                     reverse=False, nodes=None):
         """
@@ -1997,12 +2017,8 @@ class Cluster(object):
         plugins must be a tuple: the first element is the plugin's name, the
         second element is the plugin object (a subclass of ClusterSetup)
         """
-        plugs = [self._default_plugin]
-        if not self.disable_queue:
-            plugs.append(self._sge_plugin)
-        _plugs = plugins or self.plugins
-        if _plugs:
-            plugs += _plugs[:]
+        plugs = self.get_all_plugins(plugins=plugins)
+
         if reverse:
             plugs.reverse()
         for plug in plugs:

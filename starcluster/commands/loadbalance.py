@@ -20,6 +20,8 @@ from starcluster.balancers import sge
 
 from completers import ClusterCompleter
 
+def _int(option, opt_str, value, parser):
+    setattr(parser.values, option.dest, value)
 
 class CmdLoadBalance(ClusterCompleter):
     """
@@ -98,7 +100,7 @@ class CmdLoadBalance(ClusterCompleter):
                           help="Minutes to look back for past job history")
         parser.add_option("-n", "--min_nodes", dest="min_nodes",
                           action="callback", type="int", default=None,
-                          callback=self._positive_int,
+                          callback=_int,
                           help="Minimum number of nodes in cluster")
         parser.add_option("-K", "--kill-cluster", dest="kill_cluster",
                           action="store_true", default=False,
@@ -127,6 +129,10 @@ class CmdLoadBalance(ClusterCompleter):
             "--spot-bid", dest="spot_bid", default=None,
             help="If set, forces spot instances to be used and overrides "
                  "the maximum price placed.")
+        parser.add_option("--slots_per_host", dest="slots_per_host",
+                          action="callback", type="int", default=None,
+                          callback=self._positive_int,
+                          help="slots_per_host in cluster")
 
     def execute(self, args):
         if not self.cfg.globals.enable_experimental:
@@ -139,6 +145,9 @@ class CmdLoadBalance(ClusterCompleter):
             cluster = self.cm.get_cluster(cluster_tag)
             cluster.recover(self.opts.reboot_interval,
                             self.opts.n_reboot_restart)
+            template = self.cm.get_default_cluster_template()
+            plugins = self.cm.get_cluster_template(template, cluster_tag).plugins
+            cluster.plugins = plugins
             lb = sge.SGELoadBalancer(**self.specified_options_dict)
             lb.run(cluster)
         except KeyboardInterrupt:

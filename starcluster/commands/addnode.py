@@ -107,10 +107,6 @@ class CmdAddNode(ClusterCompleter):
         parser.add_option(
             "--reload-plugins", dest="reload_plugins", action="store_true",
             default=False, help="reload_plugins from config")
-        parser.add_option("-U", "--userdata-script", dest="userdata_scripts",
-                          action="append", default=None, metavar="FILE",
-                          help="Path to userdata script that will run on "
-                          "each node on start-up. Can be used multiple times.")
         opt = parser.add_option("-c", "--cluster-template", action="store",
                                 dest="cluster_template", choices=templates,
                                 default=None, help="cluster template to use "
@@ -153,5 +149,4 @@ class CmdAddNode(ClusterCompleter):
                           instance_type=self.opts.instance_type,
                           zone=self.opts.zone, spot_bid=self.opts.spot_bid,
                           no_create=self.opts.no_create,
-                          userdata_scripts=self.opts.userdata_scripts,
                           force_flat=self.opts.force_flat, plugins=plugins)

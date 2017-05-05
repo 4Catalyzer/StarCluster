@@ -937,14 +937,10 @@ class Cluster(object):
         instance_type = instance_type or self.node_instance_type
         if placement_group or instance_type in static.PLACEMENT_GROUP_TYPES:
             region = self.ec2.region.name
-            if region not in static.PLACEMENT_GROUP_REGIONS or instance_type in ['p2.xlarge']:
+            if region not in static.PLACEMENT_GROUP_REGIONS:
                 cluster_regions = ', '.join(static.PLACEMENT_GROUP_REGIONS)
                 log.warn("Placement groups are only supported in the "
                          "following regions:\n%s" % cluster_regions)
-                log.warn("Instances will not be launched in a placement group")
-                placement_group = None
-            elif instance_type in ['p2.xlarge']:
-                log.warn("Placement groups not supported for %s", instance_type)
                 log.warn("Instances will not be launched in a placement group")
                 placement_group = None
             elif not placement_group:

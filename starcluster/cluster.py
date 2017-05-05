@@ -178,14 +178,12 @@ class ClusterManager(managers.Manager):
 
     def add_nodes(self, cluster_name, num_nodes, aliases=None, no_create=False,
                   image_id=None, instance_type=None, zone=None,
-                  placement_group=None, spot_bid=None, userdata_scripts=None,
+                  placement_group=None, spot_bid=None,
                   force_flat=False, plugins=None):
         """
         Add one or more nodes to cluster
         """
         cl = self.get_cluster(cluster_name)
-        if userdata_scripts:
-            cl.userdata_scripts = userdata_scripts
         if plugins is not None:
             cl.plugins = plugins
         return cl.add_nodes(num_nodes, aliases=aliases, image_id=image_id,
@@ -710,8 +708,7 @@ class Cluster(object):
         user_settings = dict(cluster_user=self.cluster_user,
                              cluster_shell=self.cluster_shell,
                              keyname=self.keyname,
-                             spot_bid=self.spot_bid,
-                             userdata_scripts=self.userdata_scripts)
+                             spot_bid=self.spot_bid)
         core = utils.dump_compress_encode(core_settings, use_json=True,
                                           chunk_size=static.MAX_TAG_LEN)
         self._add_chunked_tags(sg, core, static.CORE_TAG)

@@ -676,11 +676,8 @@ class Node(object):
         etc_exports = self.ssh.remote_file('/etc/exports', 'a')
         for node in nodes:
             for path in export_paths:
-                nfs_export_settings_eff = nfs_export_settings
-                if '-s3' in path:
-                    nfs_export_settings_eff = "(async,no_root_squash,no_subtree_check,rw,fsid=0)"
                 export_line = ' '.join(
-                    [path, node.alias + nfs_export_settings_eff + '\n'])
+                    [path, node.alias + nfs_export_settings + '\n'])
                 if export_line not in contents:
                     etc_exports.write(export_line)
         etc_exports.close()

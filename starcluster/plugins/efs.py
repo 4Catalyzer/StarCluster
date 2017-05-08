@@ -76,8 +76,8 @@ class EFSPlugin(clustersetup.DefaultClusterSetup):
         creds = self._master.ec2.__dict__
         b3client = boto3.client(
             'efs',
-            aws_access_key_id=creds.get('aws_access_key_id'),
-            aws_secret_access_key=creds.get('aws_secret_access_key'),
+            #aws_access_key_id=creds.get('aws_access_key_id'),
+            #aws_secret_access_key=creds.get('aws_secret_access_key'),
             region_name=creds.get('_conn').region.name,
         )
         return b3client

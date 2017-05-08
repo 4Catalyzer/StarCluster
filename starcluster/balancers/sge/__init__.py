@@ -833,7 +833,7 @@ class SGELoadBalancer(LoadBalancer):
             log.warn("Removing %s: %s (%s)" %
                      (node.alias, node.id, node.dns_name))
             try:
-                self._cluster.remove_node(node, force=True)
+                self._cluster.remove_node(node)
                 self.__last_cluster_mod_time = utils.get_utc_now()
             except ThreadPoolException as tpe:
                 traceback.print_exc()

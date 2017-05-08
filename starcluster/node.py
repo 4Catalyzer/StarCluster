@@ -752,7 +752,6 @@ class Node(object):
 
     def start_nfs_server(self):
         log.info("Starting NFS server on %s" % self.alias)
-        self.ssh.execute('/etc/init.d/portmap start', ignore_exit_status=True)
         self.ssh.execute('service rpcbind start', ignore_exit_status=True)
         self.ssh.execute('mount -t rpc_pipefs sunrpc /var/lib/nfs/rpc_pipefs/',
                          ignore_exit_status=True)

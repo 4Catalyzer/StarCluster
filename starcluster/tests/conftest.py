@@ -16,10 +16,7 @@
 # along with StarCluster. If not, see <http://www.gnu.org/licenses/>.
 
 import pytest
-try:
-    from pytest_cov.plugin import CovPlugin
-except:
-    from pytest_cov import CovPlugin
+from pytest_cov import CovPlugin
 
 from starcluster import static
 from starcluster import config as sconfig

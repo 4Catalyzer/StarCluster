@@ -90,9 +90,7 @@ class EasyAWS(object):
             # if https_validate_certificates is declared in the boto config
             boto_config.setbool('Boto', 'https_validate_certificates',
                                 validate_certs)
-            self._conn = self.connection_authenticator(
-                self.aws_access_key_id, self.aws_secret_access_key,
-                **self._kwargs)
+            self._conn = self.connection_authenticator()
             self._conn.https_validate_certificates = validate_certs
         return self._conn
 

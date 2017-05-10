@@ -447,6 +447,7 @@ class Cluster(object):
                  disable_cloudinit=False,
                  subnet_ids=[],
                  iam_profile=None,
+                 iam_profile_master=None,
                  public_ips=None,
                  plugins_order=[],
                  config_on_master=False,
@@ -1512,9 +1513,13 @@ class Cluster(object):
         for alias in aliases:
             log.debug("Launching %s (ami: %s, type: %s)" %
                       (alias, image, itype))
+        extras = {}
+        if self.iam_profile_master:
+            extras['iam_profile'] = self.iam_profile_master
+
         master_response = self.create_nodes(aliases, image_id=image,
                                             instance_type=itype,
-                                            force_flat=True)[0]
+                                            force_flat=True, **extras)[0]
         zone = master_response.instances[0].placement
         insts.extend(master_response.instances)
         lmap.pop((itype, image))

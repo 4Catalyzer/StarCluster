@@ -339,6 +339,7 @@ CLUSTER_SETTINGS = {
     'subnet_ids': (list, False, [], None, None),
     'impaired_threshold_sec': (int, False, 120, None, None),
     'iam_profile': (str, False, None, None, None),
+    'iam_profile_master': (str, False, None, None, None),
 }
 
 NODE_SETTINGS = {

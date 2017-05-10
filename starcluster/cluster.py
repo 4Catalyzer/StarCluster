@@ -480,6 +480,8 @@ class Cluster(object):
         self.disable_threads = disable_threads
         self.force_spot_master = force_spot_master
         self.disable_cloudinit = disable_cloudinit
+        self.iam_profile = iam_profile
+        self.iam_profile_master = iam_profile_master
         self.plugins_order = plugins_order
         self.dns_suffix = dns_suffix and cluster_tag
         if node_instance_array:
@@ -711,8 +713,8 @@ class Cluster(object):
                     master.get_plugins(self.plugins_order))
             if load_volumes:
                 self.volumes = master.get_volumes()
-            if load_iam_profile:
-                self.iam_profile = master.get_iam_profile()
+            # if load_iam_profile:
+            #     self.iam_profile = master.get_iam_profile()
 
         except exception.PluginError:
             log.error("An error occurred while loading plugins: ",

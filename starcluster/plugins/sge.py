@@ -121,6 +121,8 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
                              node.alias)
             node.ssh.execute('qconf -aattr queue slots "[%s=%d]" all.q' %
                              (node.alias, num_slots))
+            node.ssh.execute("qconf -aattr exechost complex_values gpu=`nvidia-smi -L | grep GPU | wc -l` %s" %
+                             node.alias)
 
     def _sge_path(self, path):
         return posixpath.join(self.SGE_ROOT, path)
@@ -175,6 +177,10 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         self._inst_sge(master, exec_host=self.master_is_exec_host)
         # set all.q shell to bash
         master.ssh.execute('qconf -mattr queue shell "/bin/bash" all.q')
+
+        # Various cluster setup
+        master.ssh.execute('/opt/sge6/prep-cluster.sh')
+
         for node in self.nodes:
             self.pool.simple_job(self._add_to_sge, (node,), jobid=node.alias)
         self.pool.wait(numtasks=len(self.nodes))

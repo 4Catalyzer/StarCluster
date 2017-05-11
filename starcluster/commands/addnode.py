@@ -165,13 +165,15 @@ class CmdAddNode(ClusterCompleter):
         else:
             plugins = None
 
-        self.cm.add_nodes(tag, num_nodes, aliases=aliases,
-                          image_id=self.opts.image_id,
-                          instance_type=self.opts.instance_type,
-                          zone=self.opts.zone, spot_bid=self.opts.spot_bid,
-                          no_create=self.opts.no_create,
-                          reboot_interval=self.opts.reboot_interval,
-                          n_reboot_restart=self.opts.n_reboot_restart,
-                          placement_group=placement_group,
-                          force_flat=self.opts.force_flat, plugins=plugins
+        self.cm.add_nodes(
+            tag, num_nodes, aliases=aliases,
+            image_id=self.opts.image_id,
+            instance_type=self.opts.instance_type,
+            zone=self.opts.zone, spot_bid=self.opts.spot_bid,
+            no_create=self.opts.no_create,
+            reboot_interval=self.opts.reboot_interval,
+            n_reboot_restart=self.opts.n_reboot_restart,
+            placement_group=placement_group,
+            force_flat=self.opts.force_flat, plugins=plugins,
+            refresh_interval=self.cfg.globals.get("refresh_interval")
         )

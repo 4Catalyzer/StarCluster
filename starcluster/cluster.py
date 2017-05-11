@@ -204,13 +204,17 @@ class ClusterManager(managers.Manager):
                   image_id=None, instance_type=None, zone=None,
                   placement_group=None, spot_bid=None, reboot_interval=10,
                   n_reboot_restart=False, force_flat=False, plugins=None,
-                  iam_profile=None):
+                  iam_profile=None, refresh_interval=None):
         """
         Add one or more nodes to cluster
         """
         cl = self.get_cluster(cluster_name)
         if plugins is not None:
             cl.plugins = plugins
+
+        if refresh_interval is not None:
+            cl.refresh_interval = refresh_interval
+
         return cl.add_nodes(num_nodes, aliases=aliases, image_id=image_id,
                             instance_type=instance_type, zone=zone,
                             placement_group=placement_group, spot_bid=spot_bid,

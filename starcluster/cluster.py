@@ -831,7 +831,9 @@ class Cluster(object):
                              disable_default=self.disable_default,
                              disable_cloudinit=self.disable_cloudinit,
                              plugins_order=self.plugins_order,
-                             dns_suffix=self.dns_suffix)
+                             dns_suffix=self.dns_suffix,
+                             iam_profile=self.iam_profile,
+                             iam_profile_master=self.iam_profile_master)
         user_settings = dict(cluster_user=self.cluster_user,
                              cluster_shell=self.cluster_shell,
                              keyname=self.keyname)

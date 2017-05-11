@@ -120,6 +120,8 @@ class CreateUsers(clustersetup.DefaultClusterSetup):
     def _get_newusers_batch_file(self, master, usernames, shell,
                                  batch_file=None):
         batch_file = batch_file or self.BATCH_USER_FILE
+        # False here to avoid the incorrect optimization
+        # (when new users are added)
         if False and master.ssh.isfile(batch_file):
             bfile = master.ssh.remote_file(batch_file, 'r')
             bfilecontents = bfile.read()

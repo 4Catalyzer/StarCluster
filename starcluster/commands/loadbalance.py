@@ -122,6 +122,10 @@ class CmdLoadBalance(ClusterCompleter):
             default=False,
             help="if set, instances will not use the placement group")
         parser.add_option(
+            "--image-id", dest="image_id", action="store", type="string",
+            default=None, help="image id for new node(s) "
+            "(e.g. ami-12345678).")
+        parser.add_option(
             "--instance-type", dest="instance_type", default=None,
             help="If set, overrides which instance type newly added nodes "
                  "will use")

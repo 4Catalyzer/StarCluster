@@ -451,8 +451,8 @@ class SGELoadBalancer(LoadBalancer):
                  min_nodes=None, kill_cluster=False, plot_stats=False,
                  plot_output_dir=None, dump_stats=False, stats_file=None,
                  reboot_interval=10, n_reboot_restart=False,
-                 ignore_grp=False, instance_type=None, spot_bid=None,
-                 slots_per_host=None
+                 ignore_grp=False, image_id=None, instance_type=None,
+                 spot_bid=None, slots_per_host=None
     ):
         self._cluster = None
         self._keep_polling = True
@@ -481,6 +481,7 @@ class SGELoadBalancer(LoadBalancer):
             self._placement_group = None
         self.reboot_interval = reboot_interval
         self.n_reboot_restart = n_reboot_restart
+        self._image_id = image_id
         self._instance_type = instance_type
         self._spot_bid = spot_bid
 
@@ -783,6 +784,7 @@ class SGELoadBalancer(LoadBalancer):
                                     n_reboot_restart=self.n_reboot_restart,
                                     placement_group=self._placement_group,
                                     spot_bid=self._spot_bid,
+                                    image_id=self._image_id,
                                     instance_type=self._instance_type)
             if num_nodes < len(self._cluster.nodes):
                 self.__last_cluster_mod_time = utils.get_utc_now()

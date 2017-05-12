@@ -152,6 +152,11 @@ class CmdLoadBalance(ClusterCompleter):
             template = self.cm.get_default_cluster_template()
             plugins = self.cm.get_cluster_template(template, cluster_tag).plugins
             cluster.plugins = plugins
+
+            refresh_interval = self.cfg.globals.get("refresh_interval")
+            if refresh_interval:
+                cluster.refresh_interval = refresh_interval
+
             lb = sge.SGELoadBalancer(**self.specified_options_dict)
             lb.run(cluster)
         except KeyboardInterrupt:

@@ -113,17 +113,21 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
             inst_sge += '-x '
         inst_sge += '-noremote -auto ./%s' % self.SGE_CONF
         node.ssh.execute(inst_sge, silent=True, only_printable=True)
-        if exec_host:
-            num_slots = self.slots_per_host
-            if num_slots is None:
-                num_slots = node.num_processors
-            node.ssh.execute("qconf -aattr hostgroup hostlist %s @allhosts" %
-                             node.alias)
-            # We want this ahead of the line below so that gpu is set before adding to queue
-            node.ssh.execute("qconf -aattr exechost complex_values gpu=`nvidia-smi -L | grep GPU | wc -l` %s" %
-                             node.alias)
-            node.ssh.execute('qconf -aattr queue slots "[%s=%d]" all.q' %
-                             (node.alias, num_slots))
+
+        num_slots = self.slots_per_host
+        if num_slots is None:
+            num_slots = node.num_processors
+
+        if not exec_host:
+            num_slots = 0
+
+        node.ssh.execute("qconf -aattr hostgroup hostlist %s @allhosts" %
+                         node.alias)
+        # We want this ahead of the line below so that gpu is set before adding to queue
+        node.ssh.execute("qconf -aattr exechost complex_values gpu=`nvidia-smi -L | grep GPU | wc -l` %s" %
+                         node.alias)
+        node.ssh.execute('qconf -aattr queue slots "[%s=%d]" all.q' %
+                         (node.alias, num_slots))
 
     def _sge_path(self, path):
         return posixpath.join(self.SGE_ROOT, path)

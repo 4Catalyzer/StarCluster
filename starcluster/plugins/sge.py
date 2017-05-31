@@ -235,7 +235,7 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
                         log.warning("Restarting sge_execd over " + node.alias)
                         node.ssh.execute(
                             "pkill -9 sge_execd "
-                            "&& /opt/sge6/bin/linux-x64/sge_execd",
+                            "&& /opt/sge6/bin/lx-amd64/sge_execd",
                             source_profile=True)
                     except RemoteCommandFailed:
                         # normal -> means OGS doesn't run on the node
@@ -269,7 +269,7 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         rez = int(master.ssh.execute(cmd)[0])
         if rez == 0:
             log.error("sge_qmaster is down")
-            cmd = "cd /opt/sge6/bin/linux-x64/ && ./sge_qmaster"
+            cmd = "cd /opt/sge6/bin/lx-amd64/ && ./sge_qmaster"
             master.ssh.execute(cmd)
 
     def clean_cluster(self, nodes, master, user, user_shell, volumes):

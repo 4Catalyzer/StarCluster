@@ -2230,7 +2230,8 @@ class Cluster(object):
             log.error("Support for more than one list of nodes "
                       "to recover is not implemented")
         elif len(to_recover) == 1 and len(to_recover[0]) > 0:
-            streaming_add(self, instances=to_recover[0],
+            instances = [i for i in to_recover[0] if i != 'master']
+            streaming_add(self, instances=instances,
                           reboot_interval=reboot_interval,
                           n_reboot_restart=n_reboot_restart)
         log.info("Out of recover procedure")

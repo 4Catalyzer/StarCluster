@@ -827,6 +827,24 @@ class SGELoadBalancer(LoadBalancer):
         max_remove = num_nodes - self.min_nodes
         log.info("Looking for nodes to remove...")
         remove_nodes = self._find_nodes_for_removal(max_remove=max_remove)
+
+        seen = set()
+        problem_ids = []
+        for node in self._cluster.running_nodes:
+            if node.id == 'master':
+                continue
+
+            if node.id in seen:
+                problem_ids.append(node.id)
+            seen.add(node.id)
+
+        if problem_ids:
+            log.warn("Duplicate nodes: %s", problem_ids)
+            for problem_id in problem_ids:
+                for node in self._cluster.running_nodes:
+                    if node.id == problem_id and node not in remove_nodes:
+                        remove_nodes.append(node)
+
         if not remove_nodes:
             log.info("No nodes can be removed at this time")
         for node in remove_nodes:

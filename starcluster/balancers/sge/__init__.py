@@ -282,7 +282,8 @@ class SGEStats(object):
         """
         nodename = node.alias
         for j in self.jobs:
-            qn = j.get('queue_name', '')
+            # For some reason sometimes queue_name is None
+            qn = j.get('queue_name', '') or ''
             if nodename in qn:
                 log.debug("Node %s is working" % node.alias)
                 return True
@@ -840,10 +841,11 @@ class SGELoadBalancer(LoadBalancer):
 
         if problem_ids:
             log.warn("Duplicate nodes: %s", problem_ids)
-            for problem_id in problem_ids:
-                for node in self._cluster.running_nodes:
-                    if node.id == problem_id and node not in remove_nodes:
-                        remove_nodes.append(node)
+            # comment this out for now as it should be handled:
+            # for problem_id in problem_ids:
+            #     for node in self._cluster.running_nodes:
+            #         if node.id == problem_id and node not in remove_nodes:
+            #             remove_nodes.append(node)
 
         if not remove_nodes:
             log.info("No nodes can be removed at this time")

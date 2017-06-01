@@ -2082,7 +2082,7 @@ class Cluster(object):
                     self.cluster_shell, self.volumes] + args
             if node:
                 args.insert(0, node)
-            log.info("Running plugin %s" % plugin_name)
+            log.info("%s plugin %s" % (method_name.title(), plugin_name,))
             func(*args)
         except NotImplementedError:
             log.debug("method %s not implemented by plugin %s" % (method_name,

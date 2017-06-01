@@ -2173,6 +2173,7 @@ class Cluster(object):
                                      self.cluster_shell, self.volumes)
 
         self.run_plugins(method_name="clean_cluster", reverse=True)
+        log.info("Out of clean procedure")
 
     def _recover_duplicate_aliases(self):
         aliases = self._get_duplicate_aliases()

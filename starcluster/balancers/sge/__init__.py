@@ -19,6 +19,7 @@ import os
 import re
 import time
 import datetime
+import socket
 import xml.dom.minidom
 import traceback
 
@@ -665,52 +666,62 @@ class SGELoadBalancer(LoadBalancer):
             log.info("Writing stats to file: %s" % self.stats_file)
         if self.plot_stats:
             log.info("Plotting stats to directory: %s" % self.plot_output_dir)
+        socket_error_count = 0
         while(self._keep_polling):
-            cluster.recover(reboot_interval=self.reboot_interval,
-                            n_reboot_restart=self.n_reboot_restart)
-            cluster.clean()
-            if not cluster.is_cluster_up():
-                log.info("Waiting for all nodes to come up...")
-                time.sleep(self.polling_interval)
-                continue
-            self.get_stats()
-            log.info("Execution hosts: %d" % len(self.stat.hosts), extra=raw)
-            log.info("Execution slots: %d" % self.stat.count_total_slots(),
-                     extra=raw)
-            log.info("Queued jobs: %d" % len(self.stat.get_queued_jobs()),
-                     extra=raw)
-            oldest_queued_job_age = self.stat.oldest_queued_job_age()
-            if oldest_queued_job_age:
-                log.info("Oldest queued job: %s" % oldest_queued_job_age,
+            try:
+                cluster.recover(reboot_interval=self.reboot_interval,
+                                n_reboot_restart=self.n_reboot_restart)
+                cluster.clean()
+                if not cluster.is_cluster_up():
+                    log.info("Waiting for all nodes to come up...")
+                    time.sleep(self.polling_interval)
+                    continue
+                self.get_stats()
+                log.info("Execution hosts: %d" % len(self.stat.hosts), extra=raw)
+                log.info("Execution slots: %d" % self.stat.count_total_slots(),
                          extra=raw)
-            log.info("Avg job duration: %d secs" %
-                     self.stat.avg_job_duration(), extra=raw)
-            log.info("Avg job wait time: %d secs" % self.stat.avg_wait_time(),
-                     extra=raw)
-            log.info("Last cluster modification time: %s" %
-                     self.__last_cluster_mod_time.isoformat(),
-                     extra=dict(__raw__=True))
-            # evaluate if nodes need to be added
-            skip_sleep = self._eval_add_node()
-            # evaluate if nodes need to be removed
-            self._eval_remove_node()
-            if self.dump_stats or self.plot_stats:
-                self.stat.write_stats_to_csv(self.stats_file)
-            # call the visualizer
-            if self.plot_stats:
-                try:
-                    self.visualizer.graph_all()
-                except IOError, e:
-                    raise exception.BaseException(str(e))
-            # evaluate if cluster should be terminated
-            if self.kill_cluster:
-                if self._eval_terminate_cluster():
-                    log.info("Terminating cluster and exiting...")
-                    return self._cluster.terminate_cluster()
-            if not skip_sleep:
-                log.info("Sleeping...(looping again in %d secs)\n" %
-                         self.polling_interval)
+                log.info("Queued jobs: %d" % len(self.stat.get_queued_jobs()),
+                         extra=raw)
+                oldest_queued_job_age = self.stat.oldest_queued_job_age()
+                if oldest_queued_job_age:
+                    log.info("Oldest queued job: %s" % oldest_queued_job_age,
+                             extra=raw)
+                log.info("Avg job duration: %d secs" %
+                         self.stat.avg_job_duration(), extra=raw)
+                log.info("Avg job wait time: %d secs" % self.stat.avg_wait_time(),
+                         extra=raw)
+                log.info("Last cluster modification time: %s" %
+                         self.__last_cluster_mod_time.isoformat(),
+                         extra=dict(__raw__=True))
+                # evaluate if nodes need to be added
+                skip_sleep = self._eval_add_node()
+                # evaluate if nodes need to be removed
+                self._eval_remove_node()
+                if self.dump_stats or self.plot_stats:
+                    self.stat.write_stats_to_csv(self.stats_file)
+                # call the visualizer
+                if self.plot_stats:
+                    try:
+                        self.visualizer.graph_all()
+                    except IOError, e:
+                        raise exception.BaseException(str(e))
+                # evaluate if cluster should be terminated
+                if self.kill_cluster:
+                    if self._eval_terminate_cluster():
+                        log.info("Terminating cluster and exiting...")
+                        return self._cluster.terminate_cluster()
+                if not skip_sleep:
+                    log.info("Sleeping...(looping again in %d secs)\n" %
+                             self.polling_interval)
+                    time.sleep(self.polling_interval)
+            except socket.error as e:
+                log.exception("Connection error:")
+                socket_error_count += 1
+                if socket_error_count > 5:
+                    raise
                 time.sleep(self.polling_interval)
+            else:
+                socket_error_count = 0
 
     def has_cluster_stabilized(self):
         now = utils.get_utc_now()

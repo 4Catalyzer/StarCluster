@@ -192,6 +192,7 @@ def streaming_add(cluster, spots=None, instances=None, reboot_interval=10,
         spots = []
     if instances is None:
         instances = []
+    log.info("streaming_add: %s", [i.alias for i in instances])
     sna = StreamingNodeAdd(cluster, spots, instances, reboot_interval,
                            n_reboot_restart)
     sna.run()

@@ -2231,7 +2231,7 @@ class Cluster(object):
             log.error("Support for more than one list of nodes "
                       "to recover is not implemented")
         elif len(to_recover) == 1 and len(to_recover[0]) > 0:
-            instances = [i for i in to_recover[0] if i.alias != 'master']
+            instances = [i for i in to_recover[0] if not i.is_master()]
             log.info("Recovering: %s", [i.alias for i in instances])
             streaming_add(self, instances=instances,
                           reboot_interval=reboot_interval,

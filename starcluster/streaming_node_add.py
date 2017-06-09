@@ -141,6 +141,12 @@ class StreamingNodeAdd(object):
             except:
                 log.error("Failed to add node {}"
                           .format(ready_instance.alias), exc_info=True)
+
+                if ready_instance.is_master():
+                    log.error("Master appears to be having issues adding node"
+                              " but will not be handled")
+                    continue
+
                 duplicate_aliases = self.cluster._get_duplicate_aliases()
                 if (ready_instance.alias not in duplicate_aliases and
                         self.instances_nrm[ready_instance.id].handle_reboot()):

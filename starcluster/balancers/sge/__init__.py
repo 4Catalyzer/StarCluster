@@ -840,6 +840,7 @@ class SGELoadBalancer(LoadBalancer):
         log.info("Looking for nodes to remove...")
         remove_nodes = self._find_nodes_for_removal(max_remove=max_remove)
 
+        # TODO: Remove this
         seen = set()
         problem_ids = []
         for node in self._cluster.running_nodes:

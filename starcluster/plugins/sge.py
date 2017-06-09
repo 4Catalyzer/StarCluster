@@ -264,10 +264,13 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         self._volumes = volumes
         self._setup_sge()
 
-    def recover(self, nodes, master, user, user_shell, volumes):
+    def _is_sge_qmaster_down(self, master):
         cmd = "ps -ef | grep sge_qmaster | grep -v grep | wc -l"
         rez = int(master.ssh.execute(cmd)[0])
-        if rez == 0:
+        return rez == 0
+
+    def recover(self, nodes, master, user, user_shell, volumes):
+        if self._is_sge_qmaster_down(master):
             log.error("sge_qmaster is down")
             cmd = "cd /opt/sge6/bin/lx-amd64/ && ./sge_qmaster"
             master.ssh.execute(cmd)
@@ -356,6 +359,16 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         self._master = None
         self._nodes = None
 
+    def _sge_running(self, node, master):
+        if node.is_master():
+            return True
+
+        if self._is_sge_qmaster_down(master):
+            log.error("sge_qmaster is down")
+            return False
+
+        return True
+
     def on_add_node(self, node, nodes, master, user, user_shell, volumes):
         self._nodes = nodes
         self._master = master
@@ -365,10 +378,14 @@ class SGEPlugin(clustersetup.DefaultClusterSetup):
         log.info("Adding %s to SGE" % node.alias)
         self._setup_nfs(nodes=[node], export_paths=[self.SGE_ROOT],
                         start_server=False)
-        self._add_sge_admin_host(node)
-        self._add_sge_submit_host(node)
-        self._add_to_sge(node)
-        self._create_sge_pe()
+
+        if self._sge_running(node, master):
+            self._add_sge_admin_host(node)
+            self._add_sge_submit_host(node)
+            self._add_to_sge(node)
+            self._create_sge_pe()
+        else:
+            log.info("Skipping SGE setup")
 
         # fix to allow pickling
         self._nodes = None

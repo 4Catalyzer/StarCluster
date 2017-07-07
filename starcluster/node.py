@@ -627,7 +627,7 @@ class Node(object):
             node_names = {}.fromkeys([node.alias, node.private_dns_name,
                                       node.private_dns_name_short],
                                      node.private_ip_address)
-            node_names[node.public_dns_name] = node.ip_address
+            #node_names[node.public_dns_name] = node.ip_address
             for name, ip in node_names.items():
                 name_ip = "%s,%s" % (name, ip)
                 khosts.append(' '.join([name_ip, server_pkey.get_name(),
@@ -647,7 +647,7 @@ class Node(object):
         hostnames = []
         for node in nodes:
             hostnames += [node.alias, node.private_dns_name,
-                          node.private_dns_name_short, node.public_dns_name]
+                          node.private_dns_name_short]
         if self.ssh.isfile(known_hosts_file):
             regex = '|'.join(hostnames)
             self.ssh.remove_lines_from_file(known_hosts_file, regex)

@@ -112,11 +112,18 @@ class StreamingNodeAdd(object):
         if not self.instances:
             return
 
+        if len([i.is_master() for i in self.instances]):
+            log.info("Master in instances")
+
         ssh_up = self.cluster.pool.map(lambda i: i.is_up(), self.instances)
         zip_instances = utils.filter_move(
             lambda i: i[0].state != 'running' or not i[1],
             zip(self.instances, ssh_up), self.ready_instances,
             lambda i: i[0])
+
+        if len([i.is_master() for i in self.ready_instances]):
+            log.info("Master in ready_instances")
+
         self.instances = [i[0] for i in zip_instances]
         if self.instances:
             log.info("Still waiting for instances: " + str(self.instances))
@@ -134,6 +141,9 @@ class StreamingNodeAdd(object):
             log.info("Adding node: %s" % ready_instance.alias)
             up_nodes = filter(lambda n: n.is_up(), self.cluster.nodes)
             try:
+                # if ready_instance.is_master():
+                #     log.error("Skipping on_add_node for Master")
+                #     continue
                 self.cluster.run_plugins(method_name="on_add_node",
                                          node=ready_instance, nodes=up_nodes)
                 # success

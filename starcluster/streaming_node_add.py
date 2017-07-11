@@ -112,7 +112,7 @@ class StreamingNodeAdd(object):
         if not self.instances:
             return
 
-        if len([i.is_master() for i in self.instances]):
+        if len([i for i in self.instances if i.is_master()]):
             log.info("Master in instances")
 
         ssh_up = self.cluster.pool.map(lambda i: i.is_up(), self.instances)
@@ -121,7 +121,7 @@ class StreamingNodeAdd(object):
             zip(self.instances, ssh_up), self.ready_instances,
             lambda i: i[0])
 
-        if len([i.is_master() for i in self.ready_instances]):
+        if len([i for i in self.ready_instances if i.is_master()]):
             log.info("Master in ready_instances")
 
         self.instances = [i[0] for i in zip_instances]

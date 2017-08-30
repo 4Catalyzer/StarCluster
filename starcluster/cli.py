@@ -29,6 +29,7 @@ import platform
 import signal
 
 from boto.exception import BotoServerError, EC2ResponseError, S3ResponseError
+from raven import Client
 
 from starcluster import config
 from starcluster import static
@@ -271,20 +272,25 @@ class StarClusterCLI(object):
             sc.parser.print_help()
             sys.exit(0)
         # run the subcommand and handle exceptions
+        client = Client()
         try:
             sc.execute(args)
         except (EC2ResponseError, S3ResponseError, BotoServerError), e:
             log.error("%s: %s" % (e.error_code, e.error_message),
                       exc_info=True)
+            client.captureException()
             sys.exit(1)
         except socket.error, e:
             log.exception("Connection error:")
             log.error("Check your internet connection?")
+            client.captureException()
             sys.exit(1)
         except exception.ThreadPoolException, e:
             log.error(e.format_excs())
+            client.captureException()
             self.bug_found()
         except exception.ClusterDoesNotExist, e:
+            client.captureException()
             cm = gopts.CONFIG.get_cluster_manager()
             cls = ''
             try:
@@ -300,12 +306,14 @@ class StarClusterCLI(object):
         except exception.BaseException, e:
             log.error(e.msg, extra={'__textwrap__': True})
             log.debug(e.msg, exc_info=True)
+            client.captureException()
             sys.exit(1)
         except SystemExit:
             # re-raise SystemExit to avoid the bug-catcher below
             raise
         except Exception:
             log.error("Unhandled exception occured", exc_info=True)
+            client.captureException()
             self.bug_found()
 
 

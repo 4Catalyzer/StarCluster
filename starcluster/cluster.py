@@ -987,7 +987,7 @@ class Cluster(object):
             filters = {'instance.group-name': self._security_group}
             terminated_nodes = self.ec2.get_all_instances(filters=filters)
             raise exception.NoClusterNodesFound(terminated_nodes)
-        if nodes:
+        if nodes is not None:
             nodes_ids = [n.id for n in nodes]
             _nodes = filter(lambda n: n.id in nodes_ids, _nodes)
         return _nodes

@@ -75,7 +75,7 @@ class CreateUsers(clustersetup.DefaultClusterSetup):
         self.pool.wait(numtasks=len(nodes))
 
         for node in nodes:
-            add_group_str = "groupadd -g 998 dl-fte"
+            add_group_str = "groupadd -g 990 dl-fte"
             self.pool.simple_job(node.ssh.execute,
                                  (add_group_str),
                                  jobid=node.alias)
@@ -179,7 +179,7 @@ class CreateUsers(clustersetup.DefaultClusterSetup):
             master.add_to_known_hosts(user, [node])
             pbar.update(i + 1)
         pbar.finish()
-        add_group_str = "groupadd -g 998 dl-fte"
+        add_group_str = "groupadd -g 990 dl-fte"
         node.ssh.execute(add_group_str)
         add_user_str = "; ".join(
             ["usermod -a -G docker,dl-fte %s" % u for u in self._usernames])

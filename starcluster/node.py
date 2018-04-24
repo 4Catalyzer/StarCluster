@@ -1045,6 +1045,9 @@ class Node(object):
     def is_stopped(self):
         return self.state == "stopped"
 
+    def is_terminated(self):
+        return self.state == "terminated"
+
     def start(self):
         """
         Starts EBS-backed instance and puts it in the 'running' state.
@@ -1134,6 +1137,10 @@ class Node(object):
             log.info(self.alias + " is a spot instance and will "
                      "be terminated.")
             self.terminate()
+            return True
+
+        if self.is_terminated():
+            log.info(self.alias + " is already terminated.")
             return True
 
         self.stop()

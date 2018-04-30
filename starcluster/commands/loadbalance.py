@@ -147,8 +147,6 @@ class CmdLoadBalance(ClusterCompleter):
         try:
             cluster_tag = args[0]
             cluster = self.cm.get_cluster(cluster_tag)
-            cluster.recover(self.opts.reboot_interval,
-                            self.opts.n_reboot_restart)
             template = self.cm.get_default_cluster_template()
             plugins = self.cm.get_cluster_template(template, cluster_tag).plugins
             cluster.plugins = plugins
@@ -156,6 +154,10 @@ class CmdLoadBalance(ClusterCompleter):
             refresh_interval = self.cfg.globals.get("refresh_interval")
             if refresh_interval:
                 cluster.refresh_interval = refresh_interval
+
+            # Run this after we rebind plugins
+            cluster.recover(self.opts.reboot_interval,
+                            self.opts.n_reboot_restart)
 
             lb = sge.SGELoadBalancer(**self.specified_options_dict)
             lb.run(cluster)

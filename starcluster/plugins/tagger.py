@@ -20,3 +20,9 @@ class TaggerPlugin(ClusterSetup):
             val = self.tags.get(tag)
             log.info("Applying tag - %s: %s" % (tag, val))
         node.add_tag(tag, val)
+
+    def clean_cluster(self, nodes, master, user, user_shell, volumes):
+        pass
+
+    def recover(self, nodes, master, user, user_shell, volumes):
+        pass

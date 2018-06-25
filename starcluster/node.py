@@ -26,6 +26,8 @@ import datetime
 import tempfile
 import os
 
+from boto.exception import EC2ResponseError
+
 import config
 from starcluster import utils
 from starcluster import static
@@ -254,7 +256,24 @@ class Node(object):
         return self.instance.tags
 
     def add_tag(self, key, value=None):
-        return self.instance.add_tag(key, value)
+        count = 0
+        while True:
+            try:
+                try:
+                    return self.instance.add_tag(key, value)
+                except EC2ResponseError as e:
+                    if e.error_code == "InvalidInstanceID.NotFound":
+                        raise exception.InstanceDoesNotExist(self.id)
+                    raise e
+            except exception.InstanceDoesNotExist:
+                # TODO(arothberg): merge the except handling so there is only
+                # one try / except instead of two.
+                count += 1
+                if count > 3:
+                    raise
+                log.debug("InvalidInstanceID.NotFound: "
+                          "retrying fetching user data (tries: %s)" % count)
+                time.sleep(5)
 
     def remove_tag(self, key, value=None):
         return self.instance.remove_tag(key, value)

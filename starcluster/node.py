@@ -1146,10 +1146,15 @@ class Node(object):
             return False
 
     def is_impaired(self):
-        return bool(self.ec2.conn.get_all_instance_status(
-            instance_ids=[self.id],
-            filters={"instance-status.status": "impaired"}
-        ))
+        try:
+            return bool(self.ec2.conn.get_all_instance_status(
+                instance_ids=[self.id],
+                filters={"instance-status.status": "impaired"}
+            ))
+        except EC2ResponseError as e:
+            if e.error_code == "InvalidInstanceID.NotFound":
+                raise exception.InstanceDoesNotExist(self.id)
+            raise e
 
     def handle_irresponsive_node(self):
         if self.is_spot():

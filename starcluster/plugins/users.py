@@ -54,6 +54,7 @@ class CreateUsers(clustersetup.DefaultClusterSetup):
         self._num_users = num_users
         if not usernames:
             usernames = ['user%.3d' % i for i in range(1, num_users + 1)]
+        log.info("CreateUsers: %s" % usernames)
         self._usernames = usernames
         self._download_keys = str(download_keys).lower() == "true"
         self._download_keys_dir = download_keys_dir or self.DOWNLOAD_KEYS_DIR

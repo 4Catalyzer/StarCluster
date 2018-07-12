@@ -20,6 +20,7 @@ StarCluster Command Line Interface:
 
 starcluster [global-opts] action [action-opts] [<action-args> ...]
 """
+import logging
 import os
 import sys
 import shlex
@@ -30,6 +31,8 @@ import signal
 
 from boto.exception import BotoServerError, EC2ResponseError, S3ResponseError
 from raven import Client
+from raven.transport.http import HTTPTransport
+from raven.utils.serializer.manager import logger as sentry_logger
 
 from starcluster import config
 from starcluster import static
@@ -272,7 +275,9 @@ class StarClusterCLI(object):
             sc.parser.print_help()
             sys.exit(0)
         # run the subcommand and handle exceptions
-        client = Client()
+        sentry_logger.addHandler(console)
+        sentry_logger.setLevel(logging.INFO)
+        client = Client(transport=HTTPTransport)
         try:
             sc.execute(args)
         except (EC2ResponseError, S3ResponseError, BotoServerError), e:

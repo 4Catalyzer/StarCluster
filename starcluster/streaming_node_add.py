@@ -88,13 +88,17 @@ class StreamingNodeAdd(object):
 
         _, propagated_instance_ids = self.cluster.ec2.check_for_propagation(
             instance_ids=[s.id for s in self. unpropagated_instances])
+        if self.unpropagated_instances:
+            log.info("unpropagated_instances=%s", str(self.unpropagated_instances))
         self.unpropagated_instances = utils.filter_move(
             lambda i: i.id not in propagated_instance_ids,
             self.unpropagated_instances, self.instances)
+        log.info("instances=%s", self.instances)
         if self.unpropagated_instances:
             log.info("Still waiting for unpropagated instances: "
                      + str(self.unpropagated_instances))
         self.instances = self.cluster.get_nodes_or_raise(nodes=self.instances)
+        log.info("instances=%s", self.instances)
 
     def stream_update_nrm(self):
         for instance in self.instances:
@@ -127,6 +131,7 @@ class StreamingNodeAdd(object):
         self.instances = [i[0] for i in zip_instances]
         if self.instances:
             log.info("Still waiting for instances: " + str(self.instances))
+            log.info("statues:" + str([s.state for s in self.instances]))
 
     def stream_manage_reboots(self):
         dead_instances = []
@@ -141,9 +146,9 @@ class StreamingNodeAdd(object):
             log.info("Adding node: %s" % ready_instance.alias)
             up_nodes = filter(lambda n: n.is_up(), self.cluster.nodes)
             try:
-                # if ready_instance.is_master():
-                #     log.error("Skipping on_add_node for Master")
-                #     continue
+                if ready_instance.is_master():
+                    log.error("Skipping on_add_node for Master")
+                    continue
                 self.cluster.run_plugins(method_name="on_add_node",
                                          node=ready_instance, nodes=up_nodes)
                 # success
@@ -161,6 +166,7 @@ class StreamingNodeAdd(object):
                 if (ready_instance.alias not in duplicate_aliases and
                         self.instances_nrm[ready_instance.id].handle_reboot()):
                     # back to not ready list
+                    log.info("adding %s to instances", ready_instance.alias)
                     self.instances.append(ready_instance)
                 else:
                     # dead, delete
